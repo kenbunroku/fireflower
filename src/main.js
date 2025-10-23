@@ -5,9 +5,9 @@ Cesium.Ion.defaultAccessToken =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkYTE4NjhhMy01YjM0LTQ0MDYtOThjMi1hNWJlYmI5MWY3YzQiLCJpZCI6MzQ2NzMzLCJpYXQiOjE3NTk0NTA4NDN9.IQ-97lJJ-qTrkTUllzEMiMAIgCVSEb9eQxwIbSJ_zjo";
 
 const location = {
-  lat: 35.687755,
-  lng: 139.776646,
-  height: 200,
+  lat: 35.716833, // 35°43'00.6"N
+  lng: 139.805278, // 139°48'19.0"E
+  height: 200, // 高さ（任意）
 };
 
 const position = Cesium.Cartesian3.fromDegrees(
@@ -162,12 +162,19 @@ scene.globe.depthTestAgainstTerrain = true;
 scene.debugShowFramesPerSecond = true;
 
 try {
-  // Load the Japan Building data asset
-  const tileset = await Cesium.Cesium3DTileset.fromUrl(
-    "https://assets.cms.plateau.reearth.io/assets/4c/f2436a-e2be-40e2-83da-f1781f36e30b/13102_chuo-ku_pref_2023_citygml_1_op_bldg_3dtiles_13102_chuo-ku_lod2_no_texture/tileset.json"
+  // 台東区のLOD2のビルデータを読み込む
+  const taito = await Cesium.Cesium3DTileset.fromUrl(
+    "https://assets.cms.plateau.reearth.io/assets/21/1b6f44-7d34-40d4-a55c-b53e017365e7/13106_taito-ku_city_2024_citygml_1_op_bldg_3dtiles_13106_taito-ku_lod2/tileset.json"
   );
-  scene.primitives.add(tileset);
-  await viewer.zoomTo(tileset);
+
+  // 墨田区のLOD2のビルデータを読み込む
+  const sumida = await Cesium.Cesium3DTileset.fromUrl(
+    "https://assets.cms.plateau.reearth.io/assets/fd/ca4203-d15a-45e8-a639-f9eb5c8c3174/13107_sumida-ku_city_2024_citygml_1_op_bldg_3dtiles_13107_sumida-ku_lod2/tileset.json"
+  );
+
+  scene.primitives.add(taito);
+  scene.primitives.add(sumida);
+  await viewer.zoomTo(taito);
 } catch (error) {
   console.log(error);
 }
