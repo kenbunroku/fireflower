@@ -166,14 +166,6 @@ scene.debugShowFramesPerSecond = true;
 viewer.clock.currentTime = Cesium.JulianDate.fromIso8601(
   "2025-10-24T12:00:00Z"
 );
-scene.globe.enableLighting = true;
-scene.skyAtmosphere.hueShift = -0.8;
-scene.skyAtmosphere.saturationShift = -0.7;
-scene.skyAtmosphere.brightnessShift = -0.6;
-scene.skyBox.show = false;
-scene.backgroundColor = Cesium.Color.BLACK;
-scene.sun.show = false;
-scene.moon.show = true;
 
 try {
   // 台東区のLOD2のビルデータを読み込む
@@ -198,17 +190,18 @@ const cameraLight = new Cesium.DirectionalLight({
   direction: scene.camera.directionWC, // Updated every frame
   intensity: 2.0,
 });
-scene.globe.enableLighting = true;
-scene.globe.dynamicAtmosphereLightingFromSun = false;
-scene.globe.dynamicAtmosphereLighting = false;
-scene.light = cameraLight;
 
-scene.preRender.addEventListener(function (scene, time) {
-  scene.light.direction = Cesium.Cartesian3.clone(
-    scene.camera.directionWC,
-    scene.light.direction
-  );
-});
+scene.globe.enableLighting = true;
+// scene.globe.dynamicAtmosphereLightingFromSun = false;
+// scene.globe.dynamicAtmosphereLighting = false;
+// scene.light = cameraLight;
+
+// scene.preRender.addEventListener(function (scene, time) {
+//   scene.light.direction = Cesium.Cartesian3.clone(
+//     scene.camera.directionWC,
+//     scene.light.direction
+//   );
+// });
 
 window.addEventListener("resize", () => {
   const width = window.innerWidth;
