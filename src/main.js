@@ -7,7 +7,7 @@ Cesium.Ion.defaultAccessToken =
 const location = {
   lat: 35.716833, // 35°43'00.6"N
   lng: 139.805278, // 139°48'19.0"E
-  height: 200, // 高さ（任意）
+  height: 300, // 高さ（任意）
 };
 
 const position = Cesium.Cartesian3.fromDegrees(
@@ -157,19 +157,33 @@ const viewer = new Cesium.Viewer("cesiumContainer", {
   shadows: true,
   shouldAnimate: true,
 });
+
 const scene = viewer.scene;
 scene.globe.depthTestAgainstTerrain = true;
 scene.debugShowFramesPerSecond = true;
 
+// === 夜の雰囲気設定 ===
+viewer.clock.currentTime = Cesium.JulianDate.fromIso8601(
+  "2025-10-24T12:00:00Z"
+);
+scene.globe.enableLighting = true;
+scene.skyAtmosphere.hueShift = -0.8;
+scene.skyAtmosphere.saturationShift = -0.7;
+scene.skyAtmosphere.brightnessShift = -0.6;
+scene.skyBox.show = false;
+scene.backgroundColor = Cesium.Color.BLACK;
+scene.sun.show = false;
+scene.moon.show = true;
+
 try {
   // 台東区のLOD2のビルデータを読み込む
   const taito = await Cesium.Cesium3DTileset.fromUrl(
-    "https://assets.cms.plateau.reearth.io/assets/21/1b6f44-7d34-40d4-a55c-b53e017365e7/13106_taito-ku_city_2024_citygml_1_op_bldg_3dtiles_13106_taito-ku_lod2/tileset.json"
+    "https://assets.cms.plateau.reearth.io/assets/59/0fbb20-59cb-4ce5-9d12-2273ce72e6d2/13106_taito-ku_city_2024_citygml_1_op_bldg_3dtiles_13106_taito-ku_lod2_no_texture/tileset.json"
   );
 
   // 墨田区のLOD2のビルデータを読み込む
   const sumida = await Cesium.Cesium3DTileset.fromUrl(
-    "https://assets.cms.plateau.reearth.io/assets/fd/ca4203-d15a-45e8-a639-f9eb5c8c3174/13107_sumida-ku_city_2024_citygml_1_op_bldg_3dtiles_13107_sumida-ku_lod2/tileset.json"
+    "https://assets.cms.plateau.reearth.io/assets/5d/526931-ac09-44b4-a910-d2331d69c87a/13107_sumida-ku_city_2024_citygml_1_op_bldg_3dtiles_13107_sumida-ku_lod3_no_texture/tileset.json"
   );
 
   scene.primitives.add(taito);
