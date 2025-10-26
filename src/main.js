@@ -5,9 +5,9 @@ Cesium.Ion.defaultAccessToken =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkYTE4NjhhMy01YjM0LTQ0MDYtOThjMi1hNWJlYmI5MWY3YzQiLCJpZCI6MzQ2NzMzLCJpYXQiOjE3NTk0NTA4NDN9.IQ-97lJJ-qTrkTUllzEMiMAIgCVSEb9eQxwIbSJ_zjo";
 
 const location = {
-  lat: 35.716833, // 35°43'00.6"N
-  lng: 139.805278, // 139°48'19.0"E
-  height: 300, // 高さ（任意）
+  lat: 35.716833,
+  lng: 139.805278,
+  height: 300,
 };
 
 const position = Cesium.Cartesian3.fromDegrees(
@@ -233,30 +233,22 @@ for (let i = 0; i < numberOfFireworks; ++i) {
   createFirework(offset, color, bursts);
 }
 
-const camera = viewer.scene.camera;
-const cameraOffset = new Cesium.Cartesian3(-300.0, 0.0, 0.0);
-camera.lookAtTransform(modelMatrix, cameraOffset);
-camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
-
-const toFireworks = Cesium.Cartesian3.subtract(
-  emitterInitialLocation,
-  cameraOffset,
-  new Cesium.Cartesian3()
+const initialViewHeading = Cesium.Math.toRadians(200);
+const initialViewPitch = Cesium.Math.toRadians(-20);
+const initialViewRange = 2000.0;
+const fireworksFocus = Cesium.Cartesian3.fromDegrees(
+  location.lng,
+  location.lat,
+  location.height
 );
-Cesium.Cartesian3.normalize(toFireworks, toFireworks);
-const angle =
-  Cesium.Math.PI_OVER_TWO -
-  Math.acos(Cesium.Cartesian3.dot(toFireworks, Cesium.Cartesian3.UNIT_Z));
-camera.lookUp(angle);
 
-scene.camera.flyTo({
-  destination: Cesium.Cartesian3.fromDegrees(
-    location.lng,
-    location.lat,
-    location.height
-  ),
-  orientation: {
-    heading: Cesium.Math.toRadians(200),
-    pitch: Cesium.Math.toRadians(-7),
-  },
-});
+viewer.camera.flyToBoundingSphere(
+  new Cesium.BoundingSphere(fireworksFocus, 1.0),
+  {
+    offset: new Cesium.HeadingPitchRange(
+      initialViewHeading,
+      initialViewPitch,
+      initialViewRange
+    ),
+  }
+);
