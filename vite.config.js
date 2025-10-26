@@ -5,7 +5,7 @@ export default defineConfig(() => {
   return {
     root: "src",
     publicDir: "../public",
-    base: "/particles/",
+    base: "/fireflower/",
     build: {
       outDir: "../dist",
       emptyOutDir: true,
