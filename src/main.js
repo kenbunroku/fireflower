@@ -154,7 +154,7 @@ const viewer = new Cesium.Viewer("cesiumContainer", {
   sceneModePicker: false,
   animation: false,
   timeline: false,
-  shadows: true,
+  shadows: false,
   shouldAnimate: true,
 });
 
@@ -172,11 +172,17 @@ try {
   const taito = await Cesium.Cesium3DTileset.fromUrl(
     "https://assets.cms.plateau.reearth.io/assets/59/0fbb20-59cb-4ce5-9d12-2273ce72e6d2/13106_taito-ku_city_2024_citygml_1_op_bldg_3dtiles_13106_taito-ku_lod2_no_texture/tileset.json"
   );
+  taito.style = new Cesium.Cesium3DTileStyle({
+    color: "mix(color('#666A6D'), color(), 0.2)",
+  });
 
   // 墨田区のLOD2のビルデータを読み込む
   const sumida = await Cesium.Cesium3DTileset.fromUrl(
     "https://assets.cms.plateau.reearth.io/assets/5d/526931-ac09-44b4-a910-d2331d69c87a/13107_sumida-ku_city_2024_citygml_1_op_bldg_3dtiles_13107_sumida-ku_lod3_no_texture/tileset.json"
   );
+  sumida.style = new Cesium.Cesium3DTileStyle({
+    color: "mix(color('#666A6D'), color(), 0.2)",
+  });
 
   scene.primitives.add(taito);
   scene.primitives.add(sumida);
