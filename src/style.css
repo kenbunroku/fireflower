@@ -24,3 +24,22 @@ body {
   z-index: 1;
   pointer-events: none;
 }
+
+#resetCameraButton {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  z-index: 5;
+  display: none;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+#resetCameraButton:hover {
+  background: rgba(0, 0, 0, 0.85);
+}

@@ -7,7 +7,7 @@ Cesium.Ion.defaultAccessToken =
 const location = {
   lat: 35.716833,
   lng: 139.805278,
-  height: 300,
+  height: 200,
 };
 
 const position = Cesium.Cartesian3.fromDegrees(
@@ -156,6 +156,8 @@ const viewer = new Cesium.Viewer("cesiumContainer", {
   timeline: false,
   shadows: false,
   shouldAnimate: true,
+  infoBox: false,
+  selectionIndicator: false,
 });
 
 const scene = viewer.scene;
@@ -190,6 +192,165 @@ try {
 } catch (error) {
   console.log(error);
 }
+
+const highlightState = {
+  feature: undefined,
+  originalColor: new Cesium.Color(),
+};
+const highlightColor = Cesium.Color.fromCssColorString("#f5e642");
+const screenSpaceHandler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
+const resetCameraButton = document.getElementById("resetCameraButton");
+
+function setResetCameraButtonVisible(isVisible) {
+  if (!resetCameraButton) {
+    return;
+  }
+  resetCameraButton.style.display = isVisible ? "block" : "none";
+}
+
+setResetCameraButtonVisible(false);
+const roofViewOffsetMeters = 20.0;
+const roofCartographicScratch = new Cesium.Cartographic();
+const roofPositionScratch = new Cesium.Cartesian3();
+const cameraDirectionScratch = new Cesium.Cartesian3();
+const surfaceNormalScratch = new Cesium.Cartesian3();
+const cameraRightScratch = new Cesium.Cartesian3();
+const cameraUpScratch = new Cesium.Cartesian3();
+
+function clearHighlightedBuilding() {
+  if (!highlightState.feature) {
+    return;
+  }
+  highlightState.feature.color = Cesium.Color.clone(
+    highlightState.originalColor,
+    new Cesium.Color()
+  );
+  highlightState.feature = undefined;
+}
+
+screenSpaceHandler.setInputAction((movement) => {
+  if (!movement.endPosition) {
+    return;
+  }
+
+  const pickedFeature = scene.pick(movement.endPosition);
+
+  if (highlightState.feature && highlightState.feature !== pickedFeature) {
+    clearHighlightedBuilding();
+  }
+
+  if (
+    !pickedFeature ||
+    !(pickedFeature instanceof Cesium.Cesium3DTileFeature)
+  ) {
+    return;
+  }
+
+  if (highlightState.feature === pickedFeature) {
+    return;
+  }
+
+  highlightState.feature = pickedFeature;
+  Cesium.Color.clone(pickedFeature.color, highlightState.originalColor);
+  pickedFeature.color = highlightColor;
+}, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+function flyCameraToBuildingRoof(screenPosition) {
+  if (!scene.pickPositionSupported) {
+    return;
+  }
+
+  const pickedPosition = scene.pickPosition(screenPosition);
+  if (!Cesium.defined(pickedPosition)) {
+    return;
+  }
+
+  Cesium.Cartographic.fromCartesian(
+    pickedPosition,
+    Cesium.Ellipsoid.WGS84,
+    roofCartographicScratch
+  );
+  roofCartographicScratch.height += roofViewOffsetMeters;
+  Cesium.Cartesian3.fromRadians(
+    roofCartographicScratch.longitude,
+    roofCartographicScratch.latitude,
+    roofCartographicScratch.height,
+    Cesium.Ellipsoid.WGS84,
+    roofPositionScratch
+  );
+
+  Cesium.Cartesian3.subtract(
+    fireworksFocus,
+    roofPositionScratch,
+    cameraDirectionScratch
+  );
+  Cesium.Cartesian3.normalize(cameraDirectionScratch, cameraDirectionScratch);
+
+  Cesium.Ellipsoid.WGS84.geodeticSurfaceNormal(
+    roofPositionScratch,
+    surfaceNormalScratch
+  );
+  Cesium.Cartesian3.cross(
+    cameraDirectionScratch,
+    surfaceNormalScratch,
+    cameraRightScratch
+  );
+
+  if (Cesium.Cartesian3.magnitudeSquared(cameraRightScratch) === 0.0) {
+    Cesium.Cartesian3.clone(scene.camera.right, cameraRightScratch);
+  } else {
+    Cesium.Cartesian3.normalize(cameraRightScratch, cameraRightScratch);
+  }
+
+  Cesium.Cartesian3.cross(
+    cameraRightScratch,
+    cameraDirectionScratch,
+    cameraUpScratch
+  );
+  Cesium.Cartesian3.normalize(cameraUpScratch, cameraUpScratch);
+
+  const destination = Cesium.Cartesian3.clone(
+    roofPositionScratch,
+    new Cesium.Cartesian3()
+  );
+  const direction = Cesium.Cartesian3.clone(
+    cameraDirectionScratch,
+    new Cesium.Cartesian3()
+  );
+  const up = Cesium.Cartesian3.clone(cameraUpScratch, new Cesium.Cartesian3());
+  const fireworksOffset = Cesium.Matrix4.multiplyByPoint(
+    fireworksEnuInverse,
+    destination,
+    new Cesium.Cartesian3()
+  );
+
+  viewer.camera.flyTo({
+    destination,
+    orientation: {
+      direction,
+      up,
+    },
+    duration: 2.0,
+    complete: () => {
+      viewer.camera.lookAt(fireworksFocus, fireworksOffset);
+      viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
+      setResetCameraButtonVisible(true);
+    },
+  });
+}
+
+screenSpaceHandler.setInputAction((click) => {
+  const pickedFeature = scene.pick(click.position);
+
+  if (
+    !pickedFeature ||
+    !(pickedFeature instanceof Cesium.Cesium3DTileFeature)
+  ) {
+    return;
+  }
+
+  flyCameraToBuildingRoof(click.position);
+}, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
 // Set up a light to come from the camera to always highlight the buildings
 const cameraLight = new Cesium.DirectionalLight({
@@ -247,14 +408,40 @@ const fireworksFocus = Cesium.Cartesian3.fromDegrees(
   location.lat,
   location.height
 );
-
-viewer.camera.flyToBoundingSphere(
-  new Cesium.BoundingSphere(fireworksFocus, 1.0),
-  {
-    offset: new Cesium.HeadingPitchRange(
-      initialViewHeading,
-      initialViewPitch,
-      initialViewRange
-    ),
-  }
+const fireworksEnuInverse = Cesium.Matrix4.inverseTransformation(
+  Cesium.Transforms.eastNorthUpToFixedFrame(
+    fireworksFocus,
+    Cesium.Ellipsoid.WGS84,
+    new Cesium.Matrix4()
+  ),
+  new Cesium.Matrix4()
 );
+
+function flyToDefaultFireworksView(duration = 2.0) {
+  viewer.camera.flyToBoundingSphere(
+    new Cesium.BoundingSphere(fireworksFocus, 1.0),
+    {
+      offset: new Cesium.HeadingPitchRange(
+        initialViewHeading,
+        initialViewPitch,
+        initialViewRange
+      ),
+      duration,
+      complete: () => {
+        viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
+        setResetCameraButtonVisible(false);
+      },
+    }
+  );
+}
+
+flyToDefaultFireworksView(0.0);
+
+if (resetCameraButton) {
+  resetCameraButton.addEventListener("click", () => {
+    viewer.camera.cancelFlight();
+    clearHighlightedBuilding();
+    setResetCameraButtonVisible(false);
+    flyToDefaultFireworksView();
+  });
+}
