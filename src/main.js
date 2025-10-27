@@ -163,6 +163,8 @@ const viewer = new Cesium.Viewer("cesiumContainer", {
 const scene = viewer.scene;
 scene.globe.depthTestAgainstTerrain = true;
 scene.debugShowFramesPerSecond = true;
+scene.highDynamicRange = true;
+scene.postProcessStages.bloom.enabled = true;
 
 // === 夜の雰囲気設定 ===
 viewer.clock.currentTime = Cesium.JulianDate.fromIso8601(
