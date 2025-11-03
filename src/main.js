@@ -39,10 +39,10 @@ function getImage() {
 
 const minimumExplosionSize = 30.0;
 const maximumExplosionSize = 100.0;
-const particlePixelSize = new Cesium.Cartesian2(7.0, 7.0);
+const particlePixelSize = new Cesium.Cartesian2(5.0, 5.0);
 const burstSize = 400.0;
 const lifetime = 10.0;
-const numberOfFireworks = 20.0;
+const numberOfFireworks = 1.0;
 
 const emitterModelMatrixScratch = new Cesium.Matrix4();
 
@@ -70,8 +70,16 @@ function createFirework(offset, color, bursts) {
     minimumExplosionSize,
     maximumExplosionSize
   );
+
+  // ---------------------- 追加で使うスクラッチ ----------------------
+  const upScratch = new Cesium.Cartesian3();
+  const gravityDirScratch = new Cesium.Cartesian3();
+
+  // チューニング用パラメータ
+  const GRAVITY = 9.8; // m/s^2（小さくすると「ゆっくり落下」の演出）
+
   const particlePositionScratch = new Cesium.Cartesian3();
-  const force = function (particle) {
+  const force = function (particle, dt) {
     const position = Cesium.Matrix4.multiplyByPoint(
       worldToParticle,
       particle.position,
@@ -80,6 +88,21 @@ function createFirework(offset, color, bursts) {
     if (Cesium.Cartesian3.magnitudeSquared(position) >= size * size) {
       Cesium.Cartesian3.clone(Cesium.Cartesian3.ZERO, particle.velocity);
     }
+
+    // 2) 重力（地球の曲率を考慮：ジオデティックの“下向き”に加速）
+    //    上向き = geodeticSurfaceNormal(particle.position)
+    Cesium.Ellipsoid.WGS84.geodeticSurfaceNormal(particle.position, upScratch);
+    Cesium.Cartesian3.negate(upScratch, gravityDirScratch); // 下向き
+    Cesium.Cartesian3.multiplyByScalar(
+      gravityDirScratch,
+      GRAVITY * dt,
+      gravityDirScratch
+    );
+    Cesium.Cartesian3.add(
+      particle.velocity,
+      gravityDirScratch,
+      particle.velocity
+    );
   };
 
   const normalSize =
