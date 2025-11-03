@@ -37,10 +37,10 @@ function getImage() {
   return particleCanvas;
 }
 
-const minimumExplosionSize = 30.0;
-const maximumExplosionSize = 200.0;
-const particlePixelSize = new Cesium.Cartesian2(3.0, 3.0);
-const burstSize = 800.0;
+const minimumExplosionSize = 100.0;
+const maximumExplosionSize = 250.0;
+const particlePixelSize = new Cesium.Cartesian2(5.0, 5.0);
+const burstSize = 400.0;
 const lifetime = 5.0;
 const numberOfFireworks = 1.0;
 
@@ -92,10 +92,12 @@ function createFirework(offset, color, bursts) {
   const gravityDirScratch = new Cesium.Cartesian3();
 
   // チューニング用パラメータ
-  const GRAVITY = 9.8; // m/s^2
+  const GRAVITY = 30;
 
   const particlePositionScratch = new Cesium.Cartesian3();
+
   const force = function (particle, dt) {
+    // --- 球境界チェック ---
     const position = Cesium.Matrix4.multiplyByPoint(
       worldToParticle,
       particle.position,
@@ -105,10 +107,35 @@ function createFirework(offset, color, bursts) {
       Cesium.Cartesian3.clone(Cesium.Cartesian3.ZERO, particle.velocity);
     }
 
-    // 2) 重力（地球の曲率を考慮：ジオデティックの“下向き”に加速）
-    //    上向き = geodeticSurfaceNormal(particle.position)
+    // --- EASE-OUT 処理 ---
+    // 粒子の生存時間を 0〜1 に正規化
+    if (!particle._lifeInit) {
+      particle._elapsed = 0;
+      particle._life = particle.life || 1.0; // Cesium内部が管理している寿命
+      particle._lifeInit = true;
+    }
+    particle._elapsed += dt;
+    const t = Math.min(particle._elapsed / particle._life, 1.0);
+
+    // cubic ease-out (最初速く、後半ゆっくり)
+    const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+    const e = easeOutCubic(t);
+
+    // 速度を減衰（例えば0.3〜1.0倍の範囲で）
+    // e = easeOutCubic(t)
+    const kMin = 0.5; // 1/s（減衰の最小強さ）
+    const kMax = 3.0; // 1/s（減衰の最大強さ）
+    const k = kMin + (kMax - kMin) * e; // 時間が進むほど強く減衰
+    const damping = Math.exp(-k * dt);
+    Cesium.Cartesian3.multiplyByScalar(
+      particle.velocity,
+      damping,
+      particle.velocity
+    );
+
+    // --- 重力 (地球の曲率に沿う) ---
     Cesium.Ellipsoid.WGS84.geodeticSurfaceNormal(particle.position, upScratch);
-    Cesium.Cartesian3.negate(upScratch, gravityDirScratch); // 下向き
+    Cesium.Cartesian3.negate(upScratch, gravityDirScratch);
     Cesium.Cartesian3.multiplyByScalar(
       gravityDirScratch,
       GRAVITY * dt,
@@ -124,8 +151,8 @@ function createFirework(offset, color, bursts) {
   const normalSize =
     (size - minimumExplosionSize) /
     (maximumExplosionSize - minimumExplosionSize);
-  const minLife = 1.25;
-  const maxLife = 2;
+  const minLife = 2;
+  const maxLife = 3;
   const life = normalSize * (maxLife - minLife) + minLife;
 
   const colors = getParticleColorsFromHex(color);
@@ -136,7 +163,7 @@ function createFirework(offset, color, bursts) {
     particleLife: life,
     startScale: 0.1,
     endScale: 1.0,
-    speed: 25.0,
+    speed: 200.0,
     imageSize: particlePixelSize,
     emissionRate: 0,
     emitter: new Cesium.SphereEmitter(0.1),
