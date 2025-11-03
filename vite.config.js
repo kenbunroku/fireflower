@@ -5,10 +5,16 @@ export default defineConfig(() => {
   return {
     root: "src",
     publicDir: "../public",
-    base: "/fireflower/",
+    base: "/",
     build: {
       outDir: "../dist",
       emptyOutDir: true,
+      target: "esnext",
+    },
+    optimizeDeps: {
+      esbuildOptions: {
+        target: "esnext",
+      },
     },
     plugins: [cesium()],
   };
