@@ -38,13 +38,29 @@ function getImage() {
 }
 
 const minimumExplosionSize = 30.0;
-const maximumExplosionSize = 100.0;
+const maximumExplosionSize = 200.0;
 const particlePixelSize = new Cesium.Cartesian2(3.0, 3.0);
-const burstSize = 400.0;
+const burstSize = 800.0;
 const lifetime = 5.0;
 const numberOfFireworks = 1.0;
 
 const emitterModelMatrixScratch = new Cesium.Matrix4();
+
+function getParticleColorsFromHex(hex) {
+  const startColor = Cesium.Color.fromCssColorString(hex);
+  const endColor = Cesium.Color.clone(startColor, new Cesium.Color());
+  endColor.alpha = 0.0;
+  return {
+    startColor,
+    endColor,
+  };
+}
+
+function applyColorToParticleSystem(particleSystem, hex) {
+  const colors = getParticleColorsFromHex(hex);
+  particleSystem.startColor = colors.startColor;
+  particleSystem.endColor = colors.endColor;
+}
 
 function createFirework(offset, color, bursts) {
   const position = Cesium.Cartesian3.add(
@@ -109,28 +125,31 @@ function createFirework(offset, color, bursts) {
     (size - minimumExplosionSize) /
     (maximumExplosionSize - minimumExplosionSize);
   const minLife = 1.25;
-  const maxLife = 1.75;
+  const maxLife = 2;
   const life = normalSize * (maxLife - minLife) + minLife;
 
-  scene.primitives.add(
-    new Cesium.ParticleSystem({
-      image: getImage(),
-      startColor: color,
-      endColor: color.withAlpha(0.0),
-      particleLife: life,
-      startScale: 0.1,
-      endScale: 1.0,
-      speed: 25.0,
-      imageSize: particlePixelSize,
-      emissionRate: 0,
-      emitter: new Cesium.SphereEmitter(0.1),
-      bursts: bursts,
-      lifetime: lifetime,
-      updateCallback: force,
-      modelMatrix: modelMatrix,
-      emitterModelMatrix: emitterModelMatrix,
-    })
-  );
+  const colors = getParticleColorsFromHex(color);
+  const particleSystem = new Cesium.ParticleSystem({
+    image: getImage(),
+    startColor: colors.startColor,
+    endColor: colors.endColor,
+    particleLife: life,
+    startScale: 0.1,
+    endScale: 1.0,
+    speed: 25.0,
+    imageSize: particlePixelSize,
+    emissionRate: 0,
+    emitter: new Cesium.SphereEmitter(0.1),
+    bursts: bursts,
+    lifetime: lifetime,
+    updateCallback: force,
+    modelMatrix: modelMatrix,
+    emitterModelMatrix: emitterModelMatrix,
+  });
+  particleSystem.blendMode = Cesium.ParticleSystem.BLEND_ADD;
+
+  scene.primitives.add(particleSystem);
+  return particleSystem;
 }
 
 const xMin = -100.0;
@@ -140,32 +159,13 @@ const yMax = 100.0;
 const zMin = -50.0;
 const zMax = 50.0;
 
-const colorOptions = [
-  {
-    minimumRed: 0.75,
-    green: 0.0,
-    minimumBlue: 0.8,
-    alpha: 1.0,
-  },
-  {
-    red: 0.0,
-    minimumGreen: 0.75,
-    minimumBlue: 0.8,
-    alpha: 1.0,
-  },
-  {
-    red: 0.0,
-    green: 0.0,
-    minimumBlue: 0.8,
-    alpha: 1.0,
-  },
-  {
-    minimumRed: 0.75,
-    minimumGreen: 0.75,
-    blue: 0.0,
-    alpha: 1.0,
-  },
-];
+const fireworkColorPresets = {
+  gold: "#ffd700",
+  magenta: "#ff4dff",
+  cyan: "#4dd2ff",
+  white: "#ffffff",
+};
+const defaultFireworkColorKey = "gold";
 
 const viewer = new Cesium.Viewer("cesiumContainer", {
   terrainProvider: await Cesium.CesiumTerrainProvider.fromIonAssetId(2767062),
@@ -419,12 +419,21 @@ window.addEventListener("resize", () => {
   threeCamera.updateProjectionMatrix();
 });
 
+const fireworkSystems = [];
+const defaultFireworkColorHex =
+  fireworkColorPresets[defaultFireworkColorKey] ?? "#ffffff";
+
+if (!fireworkColorPresets[defaultFireworkColorKey]) {
+  console.warn(
+    `Missing firework color preset for key "${defaultFireworkColorKey}". Falling back to white.`
+  );
+}
+
 for (let i = 0; i < numberOfFireworks; ++i) {
   const x = Cesium.Math.randomBetween(xMin, xMax);
   const y = Cesium.Math.randomBetween(yMin, yMax);
   const z = Cesium.Math.randomBetween(zMin, zMax);
   const offset = new Cesium.Cartesian3(x, y, z);
-  const color = Cesium.Color.fromRandom(colorOptions[i % colorOptions.length]);
 
   const bursts = [];
   for (let j = 0; j < 3; ++j) {
@@ -437,7 +446,48 @@ for (let i = 0; i < numberOfFireworks; ++i) {
     );
   }
 
-  createFirework(offset, color, bursts);
+  const system = createFirework(offset, defaultFireworkColorHex, bursts);
+  fireworkSystems.push(system);
+}
+
+const fireworkColorButtons = document.querySelectorAll(
+  ".firework-color-button"
+);
+let activeFireworkColorKey = defaultFireworkColorKey;
+
+function setActiveFireworkButton(colorKey) {
+  fireworkColorButtons.forEach((button) => {
+    const buttonKey = button.dataset.fireworkColor;
+    button.classList.toggle("is-active", buttonKey === colorKey);
+  });
+}
+
+function updateFireworkColors(colorKey) {
+  const colorHex = fireworkColorPresets[colorKey];
+  if (!colorHex) {
+    console.warn(`Firework color preset "${colorKey}" is not defined.`);
+    return;
+  }
+
+  fireworkSystems.forEach((system) => {
+    applyColorToParticleSystem(system, colorHex);
+  });
+  activeFireworkColorKey = colorKey;
+  setActiveFireworkButton(colorKey);
+}
+
+if (fireworkColorButtons.length > 0) {
+  fireworkColorButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const colorKey = button.dataset.fireworkColor;
+      if (!colorKey || colorKey === activeFireworkColorKey) {
+        return;
+      }
+      updateFireworkColors(colorKey);
+    });
+  });
+
+  updateFireworkColors(activeFireworkColorKey);
 }
 
 const initialViewHeading = Cesium.Math.toRadians(200);
