@@ -39,7 +39,7 @@ function getImage() {
 
 const minimumExplosionSize = 30.0;
 const maximumExplosionSize = 100.0;
-const particlePixelSize = new Cesium.Cartesian2(5.0, 5.0);
+const particlePixelSize = new Cesium.Cartesian2(3.0, 3.0);
 const burstSize = 400.0;
 const lifetime = 10.0;
 const numberOfFireworks = 1.0;
@@ -76,7 +76,7 @@ function createFirework(offset, color, bursts) {
   const gravityDirScratch = new Cesium.Cartesian3();
 
   // チューニング用パラメータ
-  const GRAVITY = 9.8; // m/s^2（小さくすると「ゆっくり落下」の演出）
+  const GRAVITY = 9.8; // m/s^2
 
   const particlePositionScratch = new Cesium.Cartesian3();
   const force = function (particle, dt) {
@@ -108,8 +108,8 @@ function createFirework(offset, color, bursts) {
   const normalSize =
     (size - minimumExplosionSize) /
     (maximumExplosionSize - minimumExplosionSize);
-  const minLife = 0.3;
-  const maxLife = 1.0;
+  const minLife = 1.25;
+  const maxLife = 1.75;
   const life = normalSize * (maxLife - minLife) + minLife;
 
   scene.primitives.add(
@@ -118,7 +118,9 @@ function createFirework(offset, color, bursts) {
       startColor: color,
       endColor: color.withAlpha(0.0),
       particleLife: life,
-      speed: 100.0,
+      startScale: 0.1,
+      endScale: 1.0,
+      speed: 25.0,
       imageSize: particlePixelSize,
       emissionRate: 0,
       emitter: new Cesium.SphereEmitter(0.1),
