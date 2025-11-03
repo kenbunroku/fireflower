@@ -41,7 +41,7 @@ const minimumExplosionSize = 30.0;
 const maximumExplosionSize = 100.0;
 const particlePixelSize = new Cesium.Cartesian2(3.0, 3.0);
 const burstSize = 400.0;
-const lifetime = 10.0;
+const lifetime = 5.0;
 const numberOfFireworks = 1.0;
 
 const emitterModelMatrixScratch = new Cesium.Matrix4();
