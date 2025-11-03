@@ -10,12 +10,6 @@ const location = {
   height: 200,
 };
 
-const position = Cesium.Cartesian3.fromDegrees(
-  location.lng,
-  location.lat,
-  location.height
-);
-
 const modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(
   Cesium.Cartesian3.fromDegrees(location.lng, location.lat)
 );
@@ -158,13 +152,32 @@ const viewer = new Cesium.Viewer("cesiumContainer", {
   shouldAnimate: true,
   infoBox: false,
   selectionIndicator: false,
+  homeButton: false,
+  navigationHelpButton: false,
 });
 
 const scene = viewer.scene;
 scene.globe.depthTestAgainstTerrain = true;
 scene.debugShowFramesPerSecond = true;
 scene.highDynamicRange = true;
-scene.postProcessStages.bloom.enabled = true;
+const bloom = scene.postProcessStages.bloom;
+bloom.enabled = true;
+bloom.uniforms.glowOnly = false;
+bloom.uniforms.contrast = 128.0; // 強めのコントラスト
+bloom.uniforms.brightness = -0.4; // しきい値を下げる
+bloom.uniforms.delta = 0.9;
+bloom.uniforms.sigma = 4.0;
+bloom.uniforms.stepSize = 1.0;
+
+const initialJapanView = {
+  destination: Cesium.Cartesian3.fromDegrees(138.0, 37.0, 4500000.0),
+  orientation: {
+    heading: 0.0,
+    pitch: -Cesium.Math.PI_OVER_TWO,
+    roll: 0.0,
+  },
+};
+viewer.camera.setView(initialJapanView);
 
 // === 夜の雰囲気設定 ===
 viewer.clock.currentTime = Cesium.JulianDate.fromIso8601(
@@ -190,7 +203,6 @@ try {
 
   scene.primitives.add(taito);
   scene.primitives.add(sumida);
-  await viewer.zoomTo(taito);
 } catch (error) {
   console.log(error);
 }
@@ -202,6 +214,7 @@ const highlightState = {
 const highlightColor = Cesium.Color.fromCssColorString("#f5e642");
 const screenSpaceHandler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
 const resetCameraButton = document.getElementById("resetCameraButton");
+const startButton = document.getElementById("startExperienceButton");
 
 function setResetCameraButtonVisible(isVisible) {
   if (!resetCameraButton) {
@@ -437,7 +450,13 @@ function flyToDefaultFireworksView(duration = 2.0) {
   );
 }
 
-flyToDefaultFireworksView(0.0);
+if (startButton) {
+  startButton.addEventListener("click", () => {
+    startButton.style.display = "none";
+    setResetCameraButtonVisible(false);
+    flyToDefaultFireworksView();
+  });
+}
 
 if (resetCameraButton) {
   resetCameraButton.addEventListener("click", () => {
