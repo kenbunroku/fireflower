@@ -154,10 +154,12 @@ const number = 400;
 // Particle system setup using point primitives
 
 const pointsNumber = number;
-const times = 10;
+const times = 5;
 const delayStep = 0.005;
+const totalInstances = pointsNumber * times;
 const positions = new Float32Array(pointsNumber * 3 * times);
 const delays = new Float32Array(pointsNumber * times);
+const angles = new Float32Array(pointsNumber * times);
 for (let i = 0; i < pointsNumber; i++) {
   const x = 1e-9;
   const y = 0.0;
@@ -165,14 +167,16 @@ for (let i = 0; i < pointsNumber; i++) {
 
   for (let j = 0; j < times; j++) {
     const idx3 = (i * times + j) * 3;
-    const delayIndex = i * times + j;
+    const index = i * times + j;
+    const angle = (index / totalInstances) * Cesium.Math.TWO_PI;
 
     // 座標
     positions[idx3 + 0] = x;
     positions[idx3 + 1] = y;
     positions[idx3 + 2] = z;
 
-    delays[delayIndex] = j * delayStep;
+    delays[index] = j * delayStep;
+    angles[index] = angle;
   }
 }
 
@@ -183,10 +187,15 @@ const geometry = new Cesium.Geometry({
       componentsPerAttribute: 3,
       values: positions,
     }),
-    delay: new Cesium.GeometryAttribute({
+    pointDelay: new Cesium.GeometryAttribute({
       componentDatatype: Cesium.ComponentDatatype.FLOAT,
       componentsPerAttribute: 1,
       values: delays,
+    }),
+    pointAngle: new Cesium.GeometryAttribute({
+      componentDatatype: Cesium.ComponentDatatype.FLOAT,
+      componentsPerAttribute: 1,
+      values: angles,
     }),
   },
   primitiveType: Cesium.PrimitiveType.POINTS,
@@ -202,83 +211,32 @@ const appearance = new Cesium.MaterialAppearance({
     in vec3 position3DHigh;
     in vec3 position3DLow;
     in float batchId;
-    in float delay;
+    in float pointDelay;
+    in float pointAngle;
 
     // 点サイズ
     uniform float u_pointSize;
     uniform float u_time;
-    uniform float u_amplitude;
     uniform float u_period;
-
-    #define NEWTON_ITER 1
-    #define HALLEY_ITER 1
-    #define PI 3.1415926535897932384626433832795
-    vec3 hash13( uint n )
-    {
-      // integer hash copied from Hugo Elias
-      n = (n << 13U) ^ n;
-        n = n * (n * n * 15731U + 789221U) + 1376312589U;
-        uvec3 k = n * uvec3(n,n*16807U,n*48271U);
-        return vec3( k & uvec3(0x7fffffffU))/float(0x7fffffff);
-    }
-
-    float cbrt( float x )
-    {
-      float y = sign(x) * uintBitsToFloat( floatBitsToUint( abs(x) ) / 3u + 0x2a514067u );
-
-      for( int i = 0; i < NEWTON_ITER; ++i )
-          y = ( 2. * y + x / ( y * y ) ) * .333333333;
-
-        for( int i = 0; i < HALLEY_ITER; ++i )
-        {
-          float y3 = y * y * y;
-            y *= ( y3 + 2. * x ) / ( 2. * y3 + x );
-        }
-
-        return y;
-    }
-
-    vec3 rdponsphere(in float u, in float v){
-      float theta=  2. * PI * u;
-      float phi = acos(2. * v - 1.);
-      float x = sin(phi) * cos(theta);
-      float y = sin(phi) * sin(theta);
-      float z = cos(phi);
-      return vec3(x,y,z);
-    }
-
-    vec3 randomPositionInSphere(in float u, in float v, in float w){
-      float theta = u * 2. * PI;
-      float phi = acos(2. * v - 1.);
-      float r = cbrt(w)*0.2+0.9;
-      float sinTheta = sin(theta);
-      float cosTheta = cos(theta);
-      float sinPhi = sin(phi);
-      float cosPhi = cos(phi);
-      float x = r * sinPhi * cosTheta;
-      float y = r * sinPhi * sinTheta;
-      float z = r * cosPhi;
-      return vec3(x,y,z);
-    }
+    uniform float u_radius;
 
     void main() {
-      float period = max(u_period, 1e-6);
-      float phase = max(u_time - delay, 0.0);
-      float angle = (phase / period) * czm_twoPi;
-      float offset = sin(angle) * u_amplitude;
+      float safePeriod = max(u_period, 1e-6);
+      float elapsed = max(u_time - pointDelay, 0.0);
+      float cycle = mod(elapsed, safePeriod);
+      float normalized = cycle / safePeriod;
+      float radialFactor = clamp(sin(normalized * czm_pi), 0.0, 1.0);
+      float radius = radialFactor * u_radius;
 
-      vec3 modelOffset = vec3(offset, 0.0, 0.0);
+      vec3 direction = vec3(cos(pointAngle), sin(pointAngle), 0.0);
+      vec3 modelOffset = direction * radius;
 
       vec4 p = czm_computePosition();
-
-      vec3 randomPosition = hash13( uint(p.x*65526.+p.y*65526.+p.z*65526.+floor(u_time)));
-      vec3 randomOnSphere = randomPositionInSphere(randomPosition.x, randomPosition.y, randomPosition.z);
-
       vec3 eyeOffset = (czm_modelViewRelativeToEye * vec4(modelOffset, 0.0)).xyz;
       p.xyz += eyeOffset;
 
       gl_Position = czm_modelViewProjectionRelativeToEye * p;
-      gl_PointSize = u_pointSize* (1.- delay * 10.);
+      gl_PointSize = u_pointSize;
     }
   `,
   fragmentShaderSource: `
@@ -301,8 +259,8 @@ appearance.uniforms = {
   ),
   u_pointSize: 5.0,
   u_time: 0.0,
-  u_amplitude: 50.0,
   u_period: 4.0,
+  u_radius: 120.0,
 };
 
 const setPointColorFromHex = (hex) => {
