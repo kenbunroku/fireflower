@@ -1,190 +1,24 @@
 import * as Cesium from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
+import * as THREE from "three";
+import { Pane } from "tweakpane";
 
-Cesium.Ion.defaultAccessToken =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkYTE4NjhhMy01YjM0LTQ0MDYtOThjMi1hNWJlYmI5MWY3YzQiLCJpZCI6MzQ2NzMzLCJpYXQiOjE3NTk0NTA4NDN9.IQ-97lJJ-qTrkTUllzEMiMAIgCVSEb9eQxwIbSJ_zjo";
+const pane = new Pane();
+
+const params = {
+  fireworkColor: "#ffd700",
+};
+let viewer, scene;
+let bloom;
 
 const location = {
   lat: 35.716833,
   lng: 139.805278,
   height: 200,
 };
-
 const modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(
   Cesium.Cartesian3.fromDegrees(location.lng, location.lat)
 );
-
-const emitterInitialLocation = new Cesium.Cartesian3(
-  location.lng,
-  location.lat,
-  location.height
-);
-
-let particleCanvas;
-
-function getImage() {
-  if (!Cesium.defined(particleCanvas)) {
-    particleCanvas = document.createElement("canvas");
-    particleCanvas.width = 20;
-    particleCanvas.height = 20;
-    const context2D = particleCanvas.getContext("2d");
-    context2D.beginPath();
-    context2D.arc(8, 8, 8, 0, Cesium.Math.TWO_PI, true);
-    context2D.closePath();
-    context2D.fillStyle = "rgb(255, 255, 255)";
-    context2D.fill();
-  }
-  return particleCanvas;
-}
-
-const minimumExplosionSize = 100.0;
-const maximumExplosionSize = 250.0;
-const particlePixelSize = new Cesium.Cartesian2(5.0, 5.0);
-const burstSize = 400.0;
-const lifetime = 5.0;
-const numberOfFireworks = 1.0;
-
-const emitterModelMatrixScratch = new Cesium.Matrix4();
-
-function getParticleColorsFromHex(hex) {
-  const startColor = Cesium.Color.fromCssColorString(hex);
-  const endColor = Cesium.Color.clone(startColor, new Cesium.Color());
-  endColor.alpha = 0.0;
-  return {
-    startColor,
-    endColor,
-  };
-}
-
-function applyColorToParticleSystem(particleSystem, hex) {
-  const colors = getParticleColorsFromHex(hex);
-  particleSystem.startColor = colors.startColor;
-  particleSystem.endColor = colors.endColor;
-}
-
-function createFirework(offset, color, bursts) {
-  const position = Cesium.Cartesian3.add(
-    emitterInitialLocation,
-    offset,
-    new Cesium.Cartesian3()
-  );
-  const emitterModelMatrix = Cesium.Matrix4.fromTranslation(
-    position,
-    emitterModelMatrixScratch
-  );
-  const particleToWorld = Cesium.Matrix4.multiply(
-    modelMatrix,
-    emitterModelMatrix,
-    new Cesium.Matrix4()
-  );
-  const worldToParticle = Cesium.Matrix4.inverseTransformation(
-    particleToWorld,
-    particleToWorld
-  );
-
-  const size = Cesium.Math.randomBetween(
-    minimumExplosionSize,
-    maximumExplosionSize
-  );
-
-  // ---------------------- 追加で使うスクラッチ ----------------------
-  const upScratch = new Cesium.Cartesian3();
-  const gravityDirScratch = new Cesium.Cartesian3();
-
-  // チューニング用パラメータ
-  const GRAVITY = 30;
-
-  const particlePositionScratch = new Cesium.Cartesian3();
-
-  const force = function (particle, dt) {
-    // --- 球境界チェック ---
-    const position = Cesium.Matrix4.multiplyByPoint(
-      worldToParticle,
-      particle.position,
-      particlePositionScratch
-    );
-    if (Cesium.Cartesian3.magnitudeSquared(position) >= size * size) {
-      Cesium.Cartesian3.clone(Cesium.Cartesian3.ZERO, particle.velocity);
-    }
-
-    // --- EASE-OUT 処理 ---
-    // 粒子の生存時間を 0〜1 に正規化
-    if (!particle._lifeInit) {
-      particle._elapsed = 0;
-      particle._life = particle.life || 1.0; // Cesium内部が管理している寿命
-      particle._lifeInit = true;
-    }
-    particle._elapsed += dt;
-    const t = Math.min(particle._elapsed / particle._life, 1.0);
-
-    // cubic ease-out (最初速く、後半ゆっくり)
-    const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
-    const e = easeOutCubic(t);
-
-    // 速度を減衰（例えば0.3〜1.0倍の範囲で）
-    // e = easeOutCubic(t)
-    const kMin = 0.5; // 1/s（減衰の最小強さ）
-    const kMax = 3.0; // 1/s（減衰の最大強さ）
-    const k = kMin + (kMax - kMin) * e; // 時間が進むほど強く減衰
-    const damping = Math.exp(-k * dt);
-    Cesium.Cartesian3.multiplyByScalar(
-      particle.velocity,
-      damping,
-      particle.velocity
-    );
-
-    // --- 重力 (地球の曲率に沿う) ---
-    Cesium.Ellipsoid.WGS84.geodeticSurfaceNormal(particle.position, upScratch);
-    Cesium.Cartesian3.negate(upScratch, gravityDirScratch);
-    Cesium.Cartesian3.multiplyByScalar(
-      gravityDirScratch,
-      GRAVITY * dt,
-      gravityDirScratch
-    );
-    Cesium.Cartesian3.add(
-      particle.velocity,
-      gravityDirScratch,
-      particle.velocity
-    );
-  };
-
-  const normalSize =
-    (size - minimumExplosionSize) /
-    (maximumExplosionSize - minimumExplosionSize);
-  const minLife = 2;
-  const maxLife = 3;
-  const life = normalSize * (maxLife - minLife) + minLife;
-
-  const colors = getParticleColorsFromHex(color);
-  const particleSystem = new Cesium.ParticleSystem({
-    image: getImage(),
-    startColor: colors.startColor,
-    endColor: colors.endColor,
-    particleLife: life,
-    startScale: 0.1,
-    endScale: 1.0,
-    speed: 200.0,
-    imageSize: particlePixelSize,
-    emissionRate: 0,
-    emitter: new Cesium.SphereEmitter(0.1),
-    bursts: bursts,
-    lifetime: lifetime,
-    updateCallback: force,
-    modelMatrix: modelMatrix,
-    emitterModelMatrix: emitterModelMatrix,
-  });
-  particleSystem.blendMode = Cesium.ParticleSystem.BLEND_ADD;
-
-  scene.primitives.add(particleSystem);
-  return particleSystem;
-}
-
-const xMin = -100.0;
-const xMax = 100.0;
-const yMin = -80.0;
-const yMax = 100.0;
-const zMin = -50.0;
-const zMax = 50.0;
 
 const fireworkColorPresets = {
   gold: "#ffd700",
@@ -194,7 +28,20 @@ const fireworkColorPresets = {
 };
 const defaultFireworkColorKey = "gold";
 
-const viewer = new Cesium.Viewer("cesiumContainer", {
+const setup = () => {
+  setupPlateauAssets();
+};
+
+const setupPlateauAssets = async () => {
+  setupBloom();
+};
+
+const setupBloom = () => {};
+
+Cesium.Ion.defaultAccessToken =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkYTE4NjhhMy01YjM0LTQ0MDYtOThjMi1hNWJlYmI5MWY3YzQiLCJpZCI6MzQ2NzMzLCJpYXQiOjE3NTk0NTA4NDN9.IQ-97lJJ-qTrkTUllzEMiMAIgCVSEb9eQxwIbSJ_zjo";
+
+viewer = new Cesium.Viewer("cesiumContainer", {
   terrainProvider: await Cesium.CesiumTerrainProvider.fromIonAssetId(2767062),
   baseLayerPicker: false,
   sceneModePicker: false,
@@ -206,13 +53,15 @@ const viewer = new Cesium.Viewer("cesiumContainer", {
   selectionIndicator: false,
   homeButton: false,
   navigationHelpButton: false,
+  useBrowserRecommendedResolution: true,
 });
 
-const scene = viewer.scene;
+scene = viewer.scene;
 scene.globe.depthTestAgainstTerrain = true;
 scene.debugShowFramesPerSecond = true;
 scene.highDynamicRange = true;
-const bloom = scene.postProcessStages.bloom;
+
+bloom = scene.postProcessStages.bloom;
 bloom.enabled = true;
 bloom.uniforms.glowOnly = false;
 bloom.uniforms.contrast = 128.0; // 強めのコントラスト
@@ -220,6 +69,42 @@ bloom.uniforms.brightness = -0.4; // しきい値を下げる
 bloom.uniforms.delta = 0.9;
 bloom.uniforms.sigma = 4.0;
 bloom.uniforms.stepSize = 1.0;
+
+const buildingStyleOpacity = 0.7;
+const buildingStyleTintHex = "#5fd4ff";
+const buildingTilesets = [];
+let buildingSilhouetteStage;
+const buildingSilhouetteColor = Cesium.Color.fromCssColorString(
+  buildingStyleTintHex,
+  new Cesium.Color()
+);
+buildingSilhouetteColor.alpha = 1.0;
+
+const applyBuildingStyle = (tileset) => {
+  tileset.style = new Cesium.Cesium3DTileStyle({
+    color: `vec4(
+      mix(color('${buildingStyleTintHex}').r, color().r, 0.7),
+      mix(color('${buildingStyleTintHex}').g, color().g, 0.7),
+      mix(color('${buildingStyleTintHex}').b, color().b, 0.7),
+      ${buildingStyleOpacity}
+    )`,
+  });
+};
+
+const registerBuildingForSilhouette = (tileset) => {
+  buildingTilesets.push(tileset);
+  if (!buildingSilhouetteStage) {
+    buildingSilhouetteStage =
+      Cesium.PostProcessStageLibrary.createSilhouetteStage();
+    buildingSilhouetteStage.uniforms.color = Cesium.Color.clone(
+      buildingSilhouetteColor,
+      new Cesium.Color()
+    );
+    buildingSilhouetteStage.uniforms.length = 0.002;
+    scene.postProcessStages.add(buildingSilhouetteStage);
+  }
+  buildingSilhouetteStage.selected = buildingTilesets;
+};
 
 const initialJapanView = {
   destination: Cesium.Cartesian3.fromDegrees(138.0, 37.0, 4500000.0),
@@ -241,23 +126,209 @@ try {
   const taito = await Cesium.Cesium3DTileset.fromUrl(
     "https://assets.cms.plateau.reearth.io/assets/59/0fbb20-59cb-4ce5-9d12-2273ce72e6d2/13106_taito-ku_city_2024_citygml_1_op_bldg_3dtiles_13106_taito-ku_lod2_no_texture/tileset.json"
   );
-  taito.style = new Cesium.Cesium3DTileStyle({
-    color: "mix(color('#666A6D'), color(), 0.2)",
-  });
+  applyBuildingStyle(taito);
+  registerBuildingForSilhouette(taito);
 
   // 墨田区のLOD2のビルデータを読み込む
   const sumida = await Cesium.Cesium3DTileset.fromUrl(
     "https://assets.cms.plateau.reearth.io/assets/5d/526931-ac09-44b4-a910-d2331d69c87a/13107_sumida-ku_city_2024_citygml_1_op_bldg_3dtiles_13107_sumida-ku_lod3_no_texture/tileset.json"
   );
-  sumida.style = new Cesium.Cesium3DTileStyle({
-    color: "mix(color('#666A6D'), color(), 0.2)",
-  });
+  applyBuildingStyle(sumida);
+  registerBuildingForSilhouette(sumida);
 
   scene.primitives.add(taito);
   scene.primitives.add(sumida);
 } catch (error) {
   console.log(error);
 }
+
+setup();
+const xMin = -100.0;
+const xMax = 100.0;
+const yMin = -80.0;
+const yMax = 100.0;
+const zMin = -50.0;
+const zMax = 50.0;
+const number = 400;
+
+// Particle system setup using point primitives
+
+const pointsNumber = number;
+const times = 10;
+const delayStep = 0.005;
+const positions = new Float32Array(pointsNumber * 3 * times);
+const delays = new Float32Array(pointsNumber * times);
+for (let i = 0; i < pointsNumber; i++) {
+  const x = 1e-9;
+  const y = 0.0;
+  const z = 200.0;
+
+  for (let j = 0; j < times; j++) {
+    const idx3 = (i * times + j) * 3;
+    const delayIndex = i * times + j;
+
+    // 座標
+    positions[idx3 + 0] = x;
+    positions[idx3 + 1] = y;
+    positions[idx3 + 2] = z;
+
+    delays[delayIndex] = j * delayStep;
+  }
+}
+
+const geometry = new Cesium.Geometry({
+  attributes: {
+    position: new Cesium.GeometryAttribute({
+      componentDatatype: Cesium.ComponentDatatype.DOUBLE,
+      componentsPerAttribute: 3,
+      values: positions,
+    }),
+    delay: new Cesium.GeometryAttribute({
+      componentDatatype: Cesium.ComponentDatatype.FLOAT,
+      componentsPerAttribute: 1,
+      values: delays,
+    }),
+  },
+  primitiveType: Cesium.PrimitiveType.POINTS,
+  boundingSphere: Cesium.BoundingSphere.fromVertices(positions),
+});
+
+const appearance = new Cesium.MaterialAppearance({
+  flat: true,
+  faceForward: true,
+  translucent: true,
+  closed: false,
+  vertexShaderSource: `
+    in vec3 position3DHigh;
+    in vec3 position3DLow;
+    in float batchId;
+    in float delay;
+
+    // 点サイズ
+    uniform float u_pointSize;
+    uniform float u_time;
+    uniform float u_amplitude;
+    uniform float u_period;
+
+    #define NEWTON_ITER 1
+    #define HALLEY_ITER 1
+    #define PI 3.1415926535897932384626433832795
+    vec3 hash13( uint n )
+    {
+      // integer hash copied from Hugo Elias
+      n = (n << 13U) ^ n;
+        n = n * (n * n * 15731U + 789221U) + 1376312589U;
+        uvec3 k = n * uvec3(n,n*16807U,n*48271U);
+        return vec3( k & uvec3(0x7fffffffU))/float(0x7fffffff);
+    }
+
+    float cbrt( float x )
+    {
+      float y = sign(x) * uintBitsToFloat( floatBitsToUint( abs(x) ) / 3u + 0x2a514067u );
+
+      for( int i = 0; i < NEWTON_ITER; ++i )
+          y = ( 2. * y + x / ( y * y ) ) * .333333333;
+
+        for( int i = 0; i < HALLEY_ITER; ++i )
+        {
+          float y3 = y * y * y;
+            y *= ( y3 + 2. * x ) / ( 2. * y3 + x );
+        }
+
+        return y;
+    }
+
+    vec3 rdponsphere(in float u, in float v){
+      float theta=  2. * PI * u;
+      float phi = acos(2. * v - 1.);
+      float x = sin(phi) * cos(theta);
+      float y = sin(phi) * sin(theta);
+      float z = cos(phi);
+      return vec3(x,y,z);
+    }
+
+    vec3 randomPositionInSphere(in float u, in float v, in float w){
+      float theta = u * 2. * PI;
+      float phi = acos(2. * v - 1.);
+      float r = cbrt(w)*0.2+0.9;
+      float sinTheta = sin(theta);
+      float cosTheta = cos(theta);
+      float sinPhi = sin(phi);
+      float cosPhi = cos(phi);
+      float x = r * sinPhi * cosTheta;
+      float y = r * sinPhi * sinTheta;
+      float z = r * cosPhi;
+      return vec3(x,y,z);
+    }
+
+    void main() {
+      float period = max(u_period, 1e-6);
+      float phase = max(u_time - delay, 0.0);
+      float angle = (phase / period) * czm_twoPi;
+      float offset = sin(angle) * u_amplitude;
+
+      vec3 modelOffset = vec3(offset, 0.0, 0.0);
+
+      vec4 p = czm_computePosition();
+
+      vec3 randomPosition = hash13( uint(p.x*65526.+p.y*65526.+p.z*65526.+floor(u_time)));
+      vec3 randomOnSphere = randomPositionInSphere(randomPosition.x, randomPosition.y, randomPosition.z);
+
+      vec3 eyeOffset = (czm_modelViewRelativeToEye * vec4(modelOffset, 0.0)).xyz;
+      p.xyz += eyeOffset;
+
+      gl_Position = czm_modelViewProjectionRelativeToEye * p;
+      gl_PointSize = u_pointSize* (1.- delay * 10.);
+    }
+  `,
+  fragmentShaderSource: `
+    uniform vec4 u_color;
+    void main() {
+      // 円形スプライトにしたい場合は距離でマスク
+      vec2 uv = gl_PointCoord - 0.5;
+      if (length(uv) > 0.5) discard;
+
+      out_FragColor = u_color;
+    }
+  `,
+  materialCacheKey: "simple-points",
+});
+
+appearance.uniforms = {
+  u_color: Cesium.Color.fromCssColorString(
+    params.fireworkColor,
+    new Cesium.Color()
+  ),
+  u_pointSize: 5.0,
+  u_time: 0.0,
+  u_amplitude: 50.0,
+  u_period: 4.0,
+};
+
+const setPointColorFromHex = (hex) => {
+  if (!hex) {
+    return;
+  }
+  const color = Cesium.Color.fromCssColorString(
+    hex,
+    appearance.uniforms.u_color
+  );
+  if (!color) {
+    console.warn(`Invalid firework color "${hex}".`);
+    return;
+  }
+  appearance.uniforms.u_color = color;
+};
+setPointColorFromHex(params.fireworkColor);
+
+const instance = new Cesium.GeometryInstance({ geometry });
+const primitive = new Cesium.Primitive({
+  geometryInstances: instance,
+  appearance,
+  asynchronous: false,
+  modelMatrix,
+});
+scene.primitives.add(primitive);
 
 const highlightState = {
   feature: undefined,
@@ -419,23 +490,7 @@ screenSpaceHandler.setInputAction((click) => {
   flyCameraToBuildingRoof(click.position);
 }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
-// Set up a light to come from the camera to always highlight the buildings
-const cameraLight = new Cesium.DirectionalLight({
-  direction: scene.camera.directionWC, // Updated every frame
-  intensity: 2.0,
-});
-
 scene.globe.enableLighting = true;
-// scene.globe.dynamicAtmosphereLightingFromSun = false;
-// scene.globe.dynamicAtmosphereLighting = false;
-// scene.light = cameraLight;
-
-// scene.preRender.addEventListener(function (scene, time) {
-//   scene.light.direction = Cesium.Cartesian3.clone(
-//     scene.camera.directionWC,
-//     scene.light.direction
-//   );
-// });
 
 window.addEventListener("resize", () => {
   const width = window.innerWidth;
@@ -446,40 +501,10 @@ window.addEventListener("resize", () => {
   threeCamera.updateProjectionMatrix();
 });
 
-const fireworkSystems = [];
-const defaultFireworkColorHex =
-  fireworkColorPresets[defaultFireworkColorKey] ?? "#ffffff";
-
-if (!fireworkColorPresets[defaultFireworkColorKey]) {
-  console.warn(
-    `Missing firework color preset for key "${defaultFireworkColorKey}". Falling back to white.`
-  );
-}
-
-for (let i = 0; i < numberOfFireworks; ++i) {
-  const x = Cesium.Math.randomBetween(xMin, xMax);
-  const y = Cesium.Math.randomBetween(yMin, yMax);
-  const z = Cesium.Math.randomBetween(zMin, zMax);
-  const offset = new Cesium.Cartesian3(x, y, z);
-
-  const bursts = [];
-  for (let j = 0; j < 3; ++j) {
-    bursts.push(
-      new Cesium.ParticleBurst({
-        time: Cesium.Math.nextRandomNumber() * lifetime,
-        minimum: burstSize,
-        maximum: burstSize,
-      })
-    );
-  }
-
-  const system = createFirework(offset, defaultFireworkColorHex, bursts);
-  fireworkSystems.push(system);
-}
-
 const fireworkColorButtons = document.querySelectorAll(
   ".firework-color-button"
 );
+let fireworkColorBinding;
 let activeFireworkColorKey = defaultFireworkColorKey;
 
 function setActiveFireworkButton(colorKey) {
@@ -489,18 +514,29 @@ function setActiveFireworkButton(colorKey) {
   });
 }
 
-function updateFireworkColors(colorKey) {
-  const colorHex = fireworkColorPresets[colorKey];
+const resolveFireworkHex = (colorKeyOrHex) => {
+  if (!colorKeyOrHex) {
+    return undefined;
+  }
+  if (colorKeyOrHex.startsWith("#")) {
+    return colorKeyOrHex;
+  }
+  return fireworkColorPresets[colorKeyOrHex];
+};
+
+function updateFireworkColors(colorKeyOrHex) {
+  const colorHex = resolveFireworkHex(colorKeyOrHex);
   if (!colorHex) {
-    console.warn(`Firework color preset "${colorKey}" is not defined.`);
+    console.warn(`Firework color "${colorKeyOrHex}" is not defined.`);
     return;
   }
-
-  fireworkSystems.forEach((system) => {
-    applyColorToParticleSystem(system, colorHex);
-  });
-  activeFireworkColorKey = colorKey;
-  setActiveFireworkButton(colorKey);
+  activeFireworkColorKey = colorKeyOrHex;
+  params.fireworkColor = colorHex;
+  setPointColorFromHex(colorHex);
+  if (fireworkColorBinding) {
+    fireworkColorBinding.refresh();
+  }
+  setActiveFireworkButton(colorKeyOrHex);
 }
 
 if (fireworkColorButtons.length > 0) {
@@ -568,3 +604,26 @@ if (resetCameraButton) {
     flyToDefaultFireworksView();
   });
 }
+
+let animationStart;
+
+function animate(timestamp) {
+  if (animationStart === undefined) {
+    animationStart = timestamp;
+  }
+  const elapsedSeconds = (timestamp - animationStart) * 0.001;
+  appearance.uniforms.u_time = elapsedSeconds;
+  requestAnimationFrame(animate);
+}
+
+requestAnimationFrame(animate);
+
+const createDebugPane = () => {
+  fireworkColorBinding = pane
+    .addBinding(params, "fireworkColor")
+    .on("change", (event) => {
+      updateFireworkColors(event.value);
+    });
+};
+
+createDebugPane();
