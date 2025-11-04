@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import cesium from "vite-plugin-cesium";
+import glsl from "vite-plugin-glsl";
 
 export default defineConfig(() => {
   return {
@@ -16,6 +17,6 @@ export default defineConfig(() => {
         target: "esnext",
       },
     },
-    plugins: [cesium()],
+    plugins: [cesium(), glsl()],
   };
 });
