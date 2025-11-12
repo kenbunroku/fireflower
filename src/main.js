@@ -1,12 +1,31 @@
 import * as Cesium from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
-import * as THREE from "three";
 import { Pane } from "tweakpane";
 
 const pane = new Pane();
 
+const fireWorkCategory = {
+  kiku: "菊",
+  botan: "牡丹",
+  meshibe: "めしべ",
+  heart: "ハート",
+  love: "告白",
+};
+
 const params = {
+  category: fireWorkCategory.kiku,
+  numberOfParticles: 400,
+  pointSize: 3.0,
+  radius: 100,
   fireworkColor: "#ffd700",
+  launchDuration: 2.0,
+  bloomDuration: 3.0,
+  fireworkDuration: 8.0,
+  times: 75,
+  buildingColor: "#5fd4ff",
+  buildingOpacity: 0.7,
+  launchOffsetRangeMeters: 25.0,
+  height: 200,
 };
 let viewer, scene;
 let bloom;
@@ -14,7 +33,7 @@ let bloom;
 const location = {
   lat: 35.716833,
   lng: 139.805278,
-  height: 200,
+  height: 250,
 };
 const modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(
   Cesium.Cartesian3.fromDegrees(location.lng, location.lat)
@@ -70,12 +89,10 @@ bloom.uniforms.delta = 0.9;
 bloom.uniforms.sigma = 4.0;
 bloom.uniforms.stepSize = 1.0;
 
-const buildingStyleOpacity = 0.7;
-const buildingStyleTintHex = "#5fd4ff";
 const buildingTilesets = [];
 let buildingSilhouetteStage;
 const buildingSilhouetteColor = Cesium.Color.fromCssColorString(
-  buildingStyleTintHex,
+  params.buildingColor,
   new Cesium.Color()
 );
 buildingSilhouetteColor.alpha = 1.0;
@@ -83,10 +100,10 @@ buildingSilhouetteColor.alpha = 1.0;
 const applyBuildingStyle = (tileset) => {
   tileset.style = new Cesium.Cesium3DTileStyle({
     color: `vec4(
-      mix(color('${buildingStyleTintHex}').r, color().r, 0.7),
-      mix(color('${buildingStyleTintHex}').g, color().g, 0.7),
-      mix(color('${buildingStyleTintHex}').b, color().b, 0.7),
-      ${buildingStyleOpacity}
+      mix(color('${params.buildingColor}').r, color().r, ${params.buildingOpacity}),
+      mix(color('${params.buildingColor}').g, color().g, ${params.buildingOpacity}),
+      mix(color('${params.buildingColor}').b, color().b, ${params.buildingOpacity}),
+      ${params.buildingOpacity}
     )`,
   });
 };
@@ -106,15 +123,15 @@ const registerBuildingForSilhouette = (tileset) => {
   buildingSilhouetteStage.selected = buildingTilesets;
 };
 
-const initialJapanView = {
-  destination: Cesium.Cartesian3.fromDegrees(138.0, 37.0, 4500000.0),
-  orientation: {
-    heading: 0.0,
-    pitch: -Cesium.Math.PI_OVER_TWO,
-    roll: 0.0,
-  },
-};
-viewer.camera.setView(initialJapanView);
+// const initialJapanView = {
+//   destination: Cesium.Cartesian3.fromDegrees(138.0, 37.0, 4500000.0),
+//   orientation: {
+//     heading: 0.0,
+//     pitch: -Cesium.Math.PI_OVER_TWO,
+//     roll: 0.0,
+//   },
+// };
+// viewer.camera.setView(initialJapanView);
 
 // === 夜の雰囲気設定 ===
 viewer.clock.currentTime = Cesium.JulianDate.fromIso8601(
@@ -143,150 +160,293 @@ try {
 }
 
 setup();
-const xMin = -100.0;
-const xMax = 100.0;
-const yMin = -80.0;
-const yMax = 100.0;
-const zMin = -50.0;
-const zMax = 50.0;
-const number = 400;
 
 // Particle system setup using point primitives
+const defaultDelayStep = 0.005;
+const defaultLaunchIntervalSeconds = 1.0;
+const fireworks = [];
+const launchSequences = new Set();
+const launchOffsetScratch = new Cesium.Cartesian3();
+const launchTranslationScratch = new Cesium.Matrix4();
 
-const pointsNumber = number;
-const times = 5;
-const delayStep = 0.005;
-const totalInstances = pointsNumber * times;
-const positions = new Float32Array(pointsNumber * 3 * times);
-const delays = new Float32Array(pointsNumber * times);
-const angles = new Float32Array(pointsNumber * times);
-for (let i = 0; i < pointsNumber; i++) {
-  const x = 1e-9;
-  const y = 0.0;
-  const z = 200.0;
+function randomPointOnSphere(radius = 1) {
+  const u = Math.random();
+  const v = Math.random();
 
-  for (let j = 0; j < times; j++) {
-    const idx3 = (i * times + j) * 3;
-    const index = i * times + j;
-    const angle = (index / totalInstances) * Cesium.Math.TWO_PI;
+  const theta = 2 * Math.PI * u; // 経度
+  const phi = Math.acos(2 * v - 1); // 緯度（均等化）
 
-    // 座標
-    positions[idx3 + 0] = x;
-    positions[idx3 + 1] = y;
-    positions[idx3 + 2] = z;
+  const x = radius * Math.sin(phi) * Math.cos(theta);
+  const y = radius * Math.sin(phi) * Math.sin(theta);
+  const z = radius * Math.cos(phi);
 
-    delays[index] = j * delayStep;
-    angles[index] = angle;
-  }
+  return { x, y, z }; // Vector3の代わりにオブジェクト
 }
 
-const geometry = new Cesium.Geometry({
-  attributes: {
-    position: new Cesium.GeometryAttribute({
-      componentDatatype: Cesium.ComponentDatatype.DOUBLE,
-      componentsPerAttribute: 3,
-      values: positions,
-    }),
-    pointDelay: new Cesium.GeometryAttribute({
-      componentDatatype: Cesium.ComponentDatatype.FLOAT,
-      componentsPerAttribute: 1,
-      values: delays,
-    }),
-    pointAngle: new Cesium.GeometryAttribute({
-      componentDatatype: Cesium.ComponentDatatype.FLOAT,
-      componentsPerAttribute: 1,
-      values: angles,
-    }),
-  },
-  primitiveType: Cesium.PrimitiveType.POINTS,
-  boundingSphere: Cesium.BoundingSphere.fromVertices(positions),
-});
-
-const appearance = new Cesium.MaterialAppearance({
-  flat: true,
-  faceForward: true,
-  translucent: true,
-  closed: false,
-  vertexShaderSource: `
+const fireworkVertexShaderSource = `
     in vec3 position3DHigh;
     in vec3 position3DLow;
     in float batchId;
-    in float pointDelay;
-    in float pointAngle;
+    in float delay;
+    in vec3 unitDir;
 
     // 点サイズ
     uniform float u_pointSize;
     uniform float u_time;
+    uniform float u_amplitude;
     uniform float u_period;
     uniform float u_radius;
+    uniform float u_launchHeight;
+    uniform float u_launchProgress;
+    uniform float u_bloomDuration;
+
+    float easingOutQuint(float t) {
+      return 1.0 - pow(1.0 - t, 5.0);
+    }
 
     void main() {
-      float safePeriod = max(u_period, 1e-6);
-      float elapsed = max(u_time - pointDelay, 0.0);
-      float cycle = mod(elapsed, safePeriod);
-      float normalized = cycle / safePeriod;
-      float radialFactor = clamp(sin(normalized * czm_pi), 0.0, 1.0);
-      float radius = radialFactor * u_radius;
+      vec4 p = czm_translateRelativeToEye(position3DHigh, position3DLow);
+      vec3 dir = unitDir;
 
-      vec3 direction = vec3(cos(pointAngle), sin(pointAngle), 0.0);
-      vec3 modelOffset = direction * radius;
+      float t = max(u_time - delay, 0.0);
 
-      vec4 p = czm_computePosition();
-      vec3 eyeOffset = (czm_modelViewRelativeToEye * vec4(modelOffset, 0.0)).xyz;
-      p.xyz += eyeOffset;
+      float d1 = easingOutQuint(t / u_bloomDuration);
+      float grav = 9.8;
+      vec3 gravP = vec3(0., 0., -1.) * (t * t * grav) * 0.5;
+      float launchProgress = clamp(u_launchProgress, 0.0, 1.0);
+      float launchOffset = u_launchHeight * launchProgress;
+      vec3 newP = (p.xyz + dir * d1 * u_radius) + gravP;
+      newP.z += launchOffset;
+      p.xyz = newP;
 
-      gl_Position = czm_modelViewProjectionRelativeToEye * p;
-      gl_PointSize = u_pointSize;
+      gl_Position = czm_modelViewProjectionRelativeToEye * vec4(p.xyz, 1.);
+      gl_PointSize = u_pointSize* (1.- delay * 1.);
     }
-  `,
-  fragmentShaderSource: `
+  `;
+
+const fireworkFragmentShaderSource = `
     uniform vec4 u_color;
+    uniform float u_time;
+    uniform float u_bloomDuration;
+
     void main() {
       // 円形スプライトにしたい場合は距離でマスク
       vec2 uv = gl_PointCoord - 0.5;
       if (length(uv) > 0.5) discard;
 
-      out_FragColor = u_color;
-    }
-  `,
-  materialCacheKey: "simple-points",
-});
+      float alpha = 1. - smoothstep(0.0, 1.0, u_time / u_bloomDuration);
 
-appearance.uniforms = {
-  u_color: Cesium.Color.fromCssColorString(
-    params.fireworkColor,
-    new Cesium.Color()
-  ),
-  u_pointSize: 5.0,
-  u_time: 0.0,
-  u_period: 4.0,
-  u_radius: 120.0,
+      out_FragColor = vec4(u_color.xyz, u_color.a * alpha);
+    }
+  `;
+
+const createFireworkMaterial = () =>
+  new Cesium.MaterialAppearance({
+    translucent: true,
+    closed: false,
+    vertexShaderSource: fireworkVertexShaderSource,
+    fragmentShaderSource: fireworkFragmentShaderSource,
+    materialCacheKey: "simple-points",
+  });
+
+export const createFirework = (options = {}) => {
+  const {
+    numberOfParticles = params.numberOfParticles,
+    times = params.times,
+    pointSize = params.pointSize,
+    radius = params.radius,
+    fireworkColor = params.fireworkColor,
+    launchDuration = params.launchDuration,
+    bloomDuration = params.bloomDuration,
+    launchHeight = params.height,
+    delayStep = defaultDelayStep,
+    matrix = modelMatrix,
+  } = options;
+
+  const positions = new Float32Array(numberOfParticles * 3 * times);
+  const delays = new Float32Array(numberOfParticles * times);
+  const unitDirs = new Float32Array(numberOfParticles * 3 * times);
+
+  for (let i = 0; i < numberOfParticles; i++) {
+    const point = randomPointOnSphere(0.1);
+    const len = Math.hypot(point.x, point.y, point.z) || 1.0;
+    const ux = point.x / len;
+    const uy = point.y / len;
+    const uz = point.z / len;
+
+    for (let j = 0; j < times; j++) {
+      const idx3 = (i * times + j) * 3;
+      const delayIndex = i * times + j;
+
+      positions[idx3 + 0] = point.x;
+      positions[idx3 + 1] = point.y;
+      positions[idx3 + 2] = point.z;
+
+      unitDirs[idx3 + 0] = ux;
+      unitDirs[idx3 + 1] = uy;
+      unitDirs[idx3 + 2] = uz;
+
+      delays[delayIndex] = j * delayStep;
+    }
+  }
+
+  const geometry = new Cesium.Geometry({
+    attributes: {
+      position: new Cesium.GeometryAttribute({
+        componentDatatype: Cesium.ComponentDatatype.DOUBLE,
+        componentsPerAttribute: 3,
+        values: positions,
+      }),
+      delay: new Cesium.GeometryAttribute({
+        componentDatatype: Cesium.ComponentDatatype.FLOAT,
+        componentsPerAttribute: 1,
+        values: delays,
+      }),
+      unitDir: new Cesium.GeometryAttribute({
+        componentDatatype: Cesium.ComponentDatatype.FLOAT,
+        componentsPerAttribute: 3,
+        values: unitDirs,
+      }),
+    },
+    primitiveType: Cesium.PrimitiveType.POINTS,
+    boundingSphere: Cesium.BoundingSphere.fromVertices(positions),
+  });
+
+  const appearance = createFireworkMaterial();
+  appearance.uniforms = {
+    u_color: Cesium.Color.fromCssColorString(fireworkColor, new Cesium.Color()),
+    u_pointSize: pointSize,
+    u_time: 0.0,
+    u_radius: radius,
+    u_duration: launchDuration,
+    u_launchHeight: launchHeight,
+    u_bloomDuration: bloomDuration,
+    u_launchProgress: 0.0,
+  };
+
+  const instance = new Cesium.GeometryInstance({ geometry });
+  const primitive = new Cesium.Primitive({
+    geometryInstances: instance,
+    appearance,
+    asynchronous: false,
+    modelMatrix: matrix,
+  });
+  scene.primitives.add(primitive);
+
+  const firework = {
+    primitive,
+    appearance,
+    startTime: undefined,
+  };
+  fireworks.push(firework);
+  return firework;
 };
 
-const setPointColorFromHex = (hex) => {
-  if (!hex) {
+const createRandomizedLaunchMatrix = (
+  baseMatrix = modelMatrix,
+  spreadMeters = params.launchOffsetRangeMeters
+) => {
+  const offsetX = (Math.random() - 0.5) * 2.0 * spreadMeters;
+  const offsetY = (Math.random() - 0.5) * 2.0 * spreadMeters;
+  Cesium.Cartesian3.fromElements(offsetX, offsetY, 0.0, launchOffsetScratch);
+  Cesium.Matrix4.fromTranslation(launchOffsetScratch, launchTranslationScratch);
+  return Cesium.Matrix4.multiply(
+    baseMatrix,
+    launchTranslationScratch,
+    new Cesium.Matrix4()
+  );
+};
+
+const stopLaunchSequence = (sequence) => {
+  if (!sequence) {
     return;
   }
-  const color = Cesium.Color.fromCssColorString(
-    hex,
-    appearance.uniforms.u_color
+  sequence.active = false;
+  if (sequence.timeoutId) {
+    window.clearTimeout(sequence.timeoutId);
+  }
+  launchSequences.delete(sequence);
+};
+
+const stopAllLaunchSequences = () => {
+  Array.from(launchSequences).forEach((sequence) => {
+    stopLaunchSequence(sequence);
+  });
+};
+
+const launchFireworkSequence = (options = {}) => {
+  const durationSeconds = options.duration ?? params.fireworkDuration;
+  const intervalSeconds = Math.max(
+    options.interval ?? defaultLaunchIntervalSeconds,
+    0.1
   );
+  const baseMatrix = options.matrix || modelMatrix;
+  const spread = options.spread ?? params.launchOffsetRangeMeters;
+  const now = () =>
+    typeof performance !== "undefined" ? performance.now() : Date.now();
+  const startTime = now();
+  const sequence = {
+    active: true,
+    timeoutId: undefined,
+  };
+
+  const launchOnce = () => {
+    if (!sequence.active) {
+      return;
+    }
+    const elapsedSeconds = (now() - startTime) * 0.001;
+    if (elapsedSeconds > durationSeconds) {
+      stopLaunchSequence(sequence);
+      return;
+    }
+
+    const fireworkMatrix = createRandomizedLaunchMatrix(baseMatrix, spread);
+    createFirework({
+      numberOfParticles: options.numberOfParticles,
+      times: options.times,
+      pointSize: options.pointSize,
+      radius: options.radius,
+      fireworkColor: options.fireworkColor ?? params.fireworkColor,
+      launchDuration: options.launchDuration,
+      bloomDuration: options.bloomDuration,
+      launchHeight: options.launchHeight,
+      delayStep: options.delayStep,
+      matrix: fireworkMatrix,
+    });
+
+    sequence.timeoutId = window.setTimeout(launchOnce, intervalSeconds * 1000);
+  };
+
+  launchSequences.add(sequence);
+  launchOnce();
+  return () => stopLaunchSequence(sequence);
+};
+
+const startFireworkShow = () => {
+  stopAllLaunchSequences();
+  launchFireworkSequence();
+};
+
+const getPrimaryAppearance = () => fireworks[0]?.appearance;
+
+const setPointColorFromHex = (
+  hex,
+  targetAppearance = getPrimaryAppearance()
+) => {
+  if (!hex || !targetAppearance) {
+    return;
+  }
+  const baseColor = targetAppearance.uniforms.u_color || new Cesium.Color();
+  const color = Cesium.Color.fromCssColorString(hex, baseColor);
   if (!color) {
     console.warn(`Invalid firework color "${hex}".`);
     return;
   }
-  appearance.uniforms.u_color = color;
+  targetAppearance.uniforms.u_color = color;
 };
-setPointColorFromHex(params.fireworkColor);
 
-const instance = new Cesium.GeometryInstance({ geometry });
-const primitive = new Cesium.Primitive({
-  geometryInstances: instance,
-  appearance,
-  asynchronous: false,
-  modelMatrix,
-});
-scene.primitives.add(primitive);
+const primaryFirework = createFirework();
+setPointColorFromHex(params.fireworkColor, primaryFirework.appearance);
 
 const highlightState = {
   feature: undefined,
@@ -490,7 +650,9 @@ function updateFireworkColors(colorKeyOrHex) {
   }
   activeFireworkColorKey = colorKeyOrHex;
   params.fireworkColor = colorHex;
-  setPointColorFromHex(colorHex);
+  fireworks.forEach((firework) => {
+    setPointColorFromHex(colorHex, firework.appearance);
+  });
   if (fireworkColorBinding) {
     fireworkColorBinding.refresh();
   }
@@ -514,6 +676,11 @@ if (fireworkColorButtons.length > 0) {
 const initialViewHeading = Cesium.Math.toRadians(200);
 const initialViewPitch = Cesium.Math.toRadians(-20);
 const initialViewRange = 2000.0;
+const defaultFireworksOffset = new Cesium.HeadingPitchRange(
+  initialViewHeading,
+  initialViewPitch,
+  initialViewRange
+);
 const fireworksFocus = Cesium.Cartesian3.fromDegrees(
   location.lng,
   location.lat,
@@ -532,11 +699,7 @@ function flyToDefaultFireworksView(duration = 2.0) {
   viewer.camera.flyToBoundingSphere(
     new Cesium.BoundingSphere(fireworksFocus, 1.0),
     {
-      offset: new Cesium.HeadingPitchRange(
-        initialViewHeading,
-        initialViewPitch,
-        initialViewRange
-      ),
+      offset: defaultFireworksOffset,
       duration,
       complete: () => {
         viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
@@ -551,7 +714,10 @@ if (startButton) {
     startButton.style.display = "none";
     setResetCameraButtonVisible(false);
     flyToDefaultFireworksView();
+    startFireworkShow();
   });
+} else {
+  startFireworkShow();
 }
 
 if (resetCameraButton) {
@@ -563,24 +729,160 @@ if (resetCameraButton) {
   });
 }
 
-let animationStart;
+const setInitialFireworksView = () => {
+  viewer.camera.flyToBoundingSphere(
+    new Cesium.BoundingSphere(fireworksFocus, 1.0),
+    {
+      offset: defaultFireworksOffset,
+      duration: 0.0,
+      complete: () => {
+        viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
+        setResetCameraButtonVisible(false);
+      },
+    }
+  );
+};
+setInitialFireworksView();
 
 function animate(timestamp) {
-  if (animationStart === undefined) {
-    animationStart = timestamp;
-  }
-  const elapsedSeconds = (timestamp - animationStart) * 0.001;
-  appearance.uniforms.u_time = elapsedSeconds;
+  fireworks.forEach((firework) => {
+    if (!firework.startTime) {
+      firework.startTime = timestamp;
+    }
+    const uniforms = firework.appearance?.uniforms;
+    if (!uniforms) {
+      return;
+    }
+    const elapsedSeconds = (timestamp - firework.startTime) * 0.001;
+    const launchDuration = Math.max(
+      uniforms.u_duration || params.launchDuration,
+      1e-6
+    );
+    const launchProgress = Math.min(elapsedSeconds / launchDuration, 1.0);
+    uniforms.u_launchProgress = launchProgress;
+    const explosionTime = Math.max(elapsedSeconds - launchDuration, 0.0);
+    uniforms.u_time = explosionTime;
+  });
   requestAnimationFrame(animate);
 }
 
 requestAnimationFrame(animate);
 
 const createDebugPane = () => {
+  pane
+    .addBinding(params, "category", {
+      options: fireWorkCategory,
+    })
+    .on("change", () => {
+      startFireworkShow();
+    });
+
+  pane
+    .addBinding(params, "numberOfParticles", {
+      min: 100,
+      max: 1000,
+      step: 10,
+    })
+    .on("change", (event) => {
+      createFirework({
+        numberOfParticles: event.value,
+      });
+    });
+
   fireworkColorBinding = pane
     .addBinding(params, "fireworkColor")
     .on("change", (event) => {
       updateFireworkColors(event.value);
+    });
+
+  pane
+    .addBinding(params, "pointSize", {
+      min: 0.1,
+      max: 10,
+    })
+    .on("change", (event) => {
+      fireworks.forEach((firework) => {
+        firework.appearance.uniforms.u_pointSize = event.value;
+      });
+    });
+
+  pane
+    .addBinding(params, "radius", {
+      min: 10,
+      max: 500,
+    })
+    .on("change", (event) => {
+      fireworks.forEach((firework) => {
+        firework.appearance.uniforms.u_radius = event.value;
+      });
+    });
+
+  pane
+    .addBinding(params, "launchDuration", {
+      min: 0.1,
+      max: 10,
+    })
+    .on("change", (event) => {
+      fireworks.forEach((firework) => {
+        firework.appearance.uniforms.u_duration = event.value;
+      });
+    });
+
+  pane
+    .addBinding(params, "bloomDuration", {
+      min: 0.1,
+      max: 10,
+    })
+    .on("change", (event) => {
+      fireworks.forEach((firework) => {
+        firework.appearance.uniforms.u_bloomDuration = event.value;
+      });
+    });
+
+  pane
+    .addBinding(params, "fireworkDuration", {
+      min: 1,
+      max: 60,
+    })
+    .on("change", () => {
+      startFireworkShow();
+    });
+
+  pane
+    .addBinding(params, "times", {
+      min: 1,
+      max: 50,
+      step: 1,
+    })
+    .on("change", (event) => {
+      // 再読み込みして反映させる
+      window.location.reload();
+    });
+
+  pane.addBinding(params, "buildingColor").on("change", (event) => {
+    const colorHex = event.value;
+    Cesium.Color.fromCssColorString(colorHex, buildingSilhouetteColor);
+    buildingTilesets.forEach((tileset) => {
+      applyBuildingStyle(tileset);
+    });
+    if (buildingSilhouetteStage) {
+      buildingSilhouetteStage.uniforms.color = Cesium.Color.clone(
+        buildingSilhouetteColor,
+        new Cesium.Color()
+      );
+    }
+  });
+
+  pane
+    .addBinding(params, "buildingOpacity", {
+      min: 0.0,
+      max: 1.0,
+    })
+    .on("change", (event) => {
+      const opacity = event.value;
+      buildingTilesets.forEach((tileset) => {
+        applyBuildingStyle(tileset);
+      });
     });
 };
 
