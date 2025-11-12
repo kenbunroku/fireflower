@@ -20,11 +20,11 @@ const params = {
   fireworkColor: "#ffd700",
   launchDuration: 2.0,
   bloomDuration: 3.0,
-  fireworkDuration: 8.0,
+  fireworkDuration: 5.0,
   times: 75,
   buildingColor: "#5fd4ff",
   buildingOpacity: 0.7,
-  launchOffsetRangeMeters: 25.0,
+  launchOffsetRangeMeters: 100.0,
   height: 200,
 };
 let viewer, scene;
