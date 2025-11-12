@@ -40,10 +40,10 @@ const modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(
 );
 
 const fireworkColorPresets = {
-  gold: "#ffd700",
-  magenta: "#ff4dff",
-  cyan: "#4dd2ff",
-  white: "#ffffff",
+  gold: { hex: "#ffd700", secondary: "cyan" },
+  magenta: { hex: "#ff4dff", secondary: "white" },
+  cyan: { hex: "#4dd2ff", secondary: "gold" },
+  white: { hex: "#ffffff", secondary: "magenta" },
 };
 const defaultFireworkColorKey = "gold";
 
@@ -374,7 +374,7 @@ const stopAllLaunchSequences = () => {
   });
 };
 
-const launchFireworkSequence = (options = {}) => {
+const launchFireworkSequence = (options = {}, fireworkFactory) => {
   const durationSeconds = options.duration ?? params.fireworkDuration;
   const intervalSeconds = Math.max(
     options.interval ?? defaultLaunchIntervalSeconds,
@@ -389,6 +389,22 @@ const launchFireworkSequence = (options = {}) => {
     active: true,
     timeoutId: undefined,
   };
+  const defaultFactory = (matrix) => {
+    createFirework({
+      numberOfParticles: options.numberOfParticles,
+      times: options.times,
+      pointSize: options.pointSize,
+      radius: options.radius,
+      fireworkColor: options.fireworkColor ?? params.fireworkColor,
+      launchDuration: options.launchDuration,
+      bloomDuration: options.bloomDuration,
+      launchHeight: options.launchHeight,
+      delayStep: options.delayStep,
+      matrix,
+    });
+  };
+  const spawnFirework =
+    typeof fireworkFactory === "function" ? fireworkFactory : defaultFactory;
 
   const launchOnce = () => {
     if (!sequence.active) {
@@ -401,18 +417,7 @@ const launchFireworkSequence = (options = {}) => {
     }
 
     const fireworkMatrix = createRandomizedLaunchMatrix(baseMatrix, spread);
-    createFirework({
-      numberOfParticles: options.numberOfParticles,
-      times: options.times,
-      pointSize: options.pointSize,
-      radius: options.radius,
-      fireworkColor: options.fireworkColor ?? params.fireworkColor,
-      launchDuration: options.launchDuration,
-      bloomDuration: options.bloomDuration,
-      launchHeight: options.launchHeight,
-      delayStep: options.delayStep,
-      matrix: fireworkMatrix,
-    });
+    spawnFirework(fireworkMatrix);
 
     sequence.timeoutId = window.setTimeout(launchOnce, intervalSeconds * 1000);
   };
@@ -424,6 +429,32 @@ const launchFireworkSequence = (options = {}) => {
 
 const startFireworkShow = () => {
   stopAllLaunchSequences();
+  const category = params.category;
+
+  if (category === fireWorkCategory.botan) {
+    const innerRadius = params.radius * 0.6;
+    const outerRadius = params.radius * 1.2;
+    const primaryPresetKey = activeFireworkColorKey ?? defaultFireworkColorKey;
+    const secondaryPresetKey = resolveSecondaryPresetKey(primaryPresetKey);
+    const primaryColorHex =
+      resolveFireworkHex(primaryPresetKey) ?? params.fireworkColor;
+    const secondaryColorHex =
+      resolveFireworkHex(secondaryPresetKey) ?? params.fireworkColor;
+    launchFireworkSequence({}, (matrix) => {
+      createFirework({
+        radius: innerRadius,
+        matrix,
+        fireworkColor: primaryColorHex,
+      });
+      createFirework({
+        radius: outerRadius,
+        matrix,
+        fireworkColor: secondaryColorHex,
+      });
+    });
+    return;
+  }
+
   launchFireworkSequence();
 };
 
@@ -636,11 +667,36 @@ const resolveFireworkHex = (colorKeyOrHex) => {
   if (!colorKeyOrHex) {
     return undefined;
   }
-  if (colorKeyOrHex.startsWith("#")) {
+  if (typeof colorKeyOrHex === "string" && colorKeyOrHex.startsWith("#")) {
     return colorKeyOrHex;
   }
-  return fireworkColorPresets[colorKeyOrHex];
+  return fireworkColorPresets[colorKeyOrHex]?.hex;
 };
+
+const resolveFireworkPresetKey = (colorKeyOrHex) => {
+  if (!colorKeyOrHex) {
+    return undefined;
+  }
+  const isHex =
+    typeof colorKeyOrHex === "string" && colorKeyOrHex.startsWith("#");
+  if (!isHex && fireworkColorPresets[colorKeyOrHex]) {
+    return colorKeyOrHex;
+  }
+  const hexValue = isHex
+    ? colorKeyOrHex
+    : fireworkColorPresets[colorKeyOrHex]?.hex;
+  if (typeof hexValue !== "string") {
+    return undefined;
+  }
+  const normalizedHex = hexValue.toLowerCase();
+  const match = Object.entries(fireworkColorPresets).find(
+    ([, preset]) => preset.hex.toLowerCase() === normalizedHex
+  );
+  return match?.[0];
+};
+
+const resolveSecondaryPresetKey = (primaryKey) =>
+  fireworkColorPresets[primaryKey]?.secondary ?? defaultFireworkColorKey;
 
 function updateFireworkColors(colorKeyOrHex) {
   const colorHex = resolveFireworkHex(colorKeyOrHex);
@@ -648,7 +704,10 @@ function updateFireworkColors(colorKeyOrHex) {
     console.warn(`Firework color "${colorKeyOrHex}" is not defined.`);
     return;
   }
-  activeFireworkColorKey = colorKeyOrHex;
+  const presetKey = resolveFireworkPresetKey(colorKeyOrHex);
+  if (presetKey) {
+    activeFireworkColorKey = presetKey;
+  }
   params.fireworkColor = colorHex;
   fireworks.forEach((firework) => {
     setPointColorFromHex(colorHex, firework.appearance);
@@ -656,7 +715,7 @@ function updateFireworkColors(colorKeyOrHex) {
   if (fireworkColorBinding) {
     fireworkColorBinding.refresh();
   }
-  setActiveFireworkButton(colorKeyOrHex);
+  setActiveFireworkButton(activeFireworkColorKey);
 }
 
 if (fireworkColorButtons.length > 0) {
