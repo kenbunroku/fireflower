@@ -1,6 +1,11 @@
 import * as Cesium from "cesium";
+import * as THREE from "three";
 import "cesium/Build/Cesium/Widgets/widgets.css";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { Pane } from "tweakpane";
+
+const isDebugMode = true;
 
 const pane = new Pane();
 
@@ -46,6 +51,100 @@ const fireworkColorPresets = {
   white: { hex: "#ffffff", secondary: "magenta" },
 };
 const defaultFireworkColorKey = "gold";
+
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath("./draco/");
+const gltfLoader = new GLTFLoader();
+gltfLoader.setDRACOLoader(dracoLoader);
+const heartModelUrl = new URL("./models.glb", import.meta.url).href;
+
+let heartPatternPromise;
+let cachedHeartPattern;
+
+const DEFAULT_UNIT_DIR = [0, 0, 1];
+
+const extractPatternFromHeartModel = (scene) => {
+  if (!scene) {
+    return undefined;
+  }
+  scene.updateMatrixWorld(true);
+  const vertex = new THREE.Vector3();
+  const worldPosition = new THREE.Vector3();
+  const boundingMin = new THREE.Vector3(
+    Number.POSITIVE_INFINITY,
+    Number.POSITIVE_INFINITY,
+    Number.POSITIVE_INFINITY
+  );
+  const boundingMax = new THREE.Vector3(
+    Number.NEGATIVE_INFINITY,
+    Number.NEGATIVE_INFINITY,
+    Number.NEGATIVE_INFINITY
+  );
+  const rawPositions = [];
+  scene.traverse((child) => {
+    if (!child.isMesh || !child.geometry?.attributes?.position) {
+      return;
+    }
+    const { position } = child.geometry.attributes;
+    for (let i = 0; i < position.count; i++) {
+      vertex.fromBufferAttribute(position, i);
+      worldPosition.copy(vertex).applyMatrix4(child.matrixWorld);
+      rawPositions.push(worldPosition.x, worldPosition.y, worldPosition.z);
+      boundingMin.min(worldPosition);
+      boundingMax.max(worldPosition);
+    }
+  });
+  if (rawPositions.length === 0) {
+    return undefined;
+  }
+  const center = new THREE.Vector3()
+    .addVectors(boundingMin, boundingMax)
+    .multiplyScalar(0.5);
+  const positionArray = new Float32Array(rawPositions.length);
+  const unitDirArray = new Float32Array(rawPositions.length);
+  for (let i = 0; i < rawPositions.length; i += 3) {
+    const x = rawPositions[i] - center.x;
+    const y = rawPositions[i + 1] - center.y;
+    const z = rawPositions[i + 2] - center.z;
+    positionArray[i] = x;
+    positionArray[i + 1] = y;
+    positionArray[i + 2] = z;
+    const length = Math.hypot(x, y, z);
+    if (length > 1e-5) {
+      unitDirArray[i] = x / length;
+      unitDirArray[i + 1] = y / length;
+      unitDirArray[i + 2] = z / length;
+    } else {
+      unitDirArray[i] = DEFAULT_UNIT_DIR[0];
+      unitDirArray[i + 1] = DEFAULT_UNIT_DIR[1];
+      unitDirArray[i + 2] = DEFAULT_UNIT_DIR[2];
+    }
+  }
+  return {
+    positions: positionArray,
+    unitDirs: unitDirArray,
+    count: positionArray.length / 3,
+  };
+};
+
+const loadHeartPattern = () => {
+  if (cachedHeartPattern) {
+    return Promise.resolve(cachedHeartPattern);
+  }
+  if (!heartPatternPromise) {
+    heartPatternPromise = gltfLoader
+      .loadAsync(heartModelUrl)
+      .then((gltf) => {
+        cachedHeartPattern = extractPatternFromHeartModel(gltf.scene);
+        return cachedHeartPattern;
+      })
+      .catch((error) => {
+        heartPatternPromise = undefined;
+        throw error;
+      });
+  }
+  return heartPatternPromise;
+};
 
 const setup = () => {
   setupPlateauAssets();
@@ -123,15 +222,18 @@ const registerBuildingForSilhouette = (tileset) => {
   buildingSilhouetteStage.selected = buildingTilesets;
 };
 
-// const initialJapanView = {
-//   destination: Cesium.Cartesian3.fromDegrees(138.0, 37.0, 4500000.0),
-//   orientation: {
-//     heading: 0.0,
-//     pitch: -Cesium.Math.PI_OVER_TWO,
-//     roll: 0.0,
-//   },
-// };
-// viewer.camera.setView(initialJapanView);
+const initialJapanView = {
+  destination: Cesium.Cartesian3.fromDegrees(138.0, 37.0, 4500000.0),
+  orientation: {
+    heading: 0.0,
+    pitch: -Cesium.Math.PI_OVER_TWO,
+    roll: 0.0,
+  },
+};
+
+if (!isDebugMode) {
+  viewer.camera.setView(initialJapanView);
+}
 
 // === 夜の雰囲気設定 ===
 viewer.clock.currentTime = Cesium.JulianDate.fromIso8601(
@@ -166,6 +268,7 @@ const defaultDelayStep = 0.005;
 const defaultLaunchIntervalSeconds = 1.0;
 const fireworks = [];
 const launchSequences = new Set();
+let fireworkLaunchToken = 0;
 const launchOffsetScratch = new Cesium.Cartesian3();
 const launchTranslationScratch = new Cesium.Matrix4();
 
@@ -261,26 +364,71 @@ export const createFirework = (options = {}) => {
     launchHeight = params.height,
     delayStep = defaultDelayStep,
     matrix = modelMatrix,
+    patternPositions,
+    patternUnitDirs,
+    patternCount,
   } = options;
 
-  const positions = new Float32Array(numberOfParticles * 3 * times);
-  const delays = new Float32Array(numberOfParticles * times);
-  const unitDirs = new Float32Array(numberOfParticles * 3 * times);
+  const resolvedPatternCount =
+    typeof patternCount === "number" && patternCount > 0
+      ? patternCount
+      : patternPositions?.length
+      ? Math.floor(patternPositions.length / 3)
+      : 0;
+  const usePattern =
+    resolvedPatternCount > 0 &&
+    patternPositions?.length >= resolvedPatternCount * 3;
+  const particleCount = usePattern ? resolvedPatternCount : numberOfParticles;
 
-  for (let i = 0; i < numberOfParticles; i++) {
-    const point = randomPointOnSphere(0.1);
-    const len = Math.hypot(point.x, point.y, point.z) || 1.0;
-    const ux = point.x / len;
-    const uy = point.y / len;
-    const uz = point.z / len;
+  const positions = new Float32Array(particleCount * 3 * times);
+  const delays = new Float32Array(particleCount * times);
+  const unitDirs = new Float32Array(particleCount * 3 * times);
+
+  for (let i = 0; i < particleCount; i++) {
+    let px = 0.0;
+    let py = 0.0;
+    let pz = 0.0;
+    let ux = 0.0;
+    let uy = 0.0;
+    let uz = 0.0;
+
+    if (usePattern) {
+      const sourceIndex = (i % resolvedPatternCount) * 3;
+      px = patternPositions[sourceIndex];
+      py = patternPositions[sourceIndex + 1];
+      pz = patternPositions[sourceIndex + 2];
+      if (
+        patternUnitDirs &&
+        patternUnitDirs.length >= sourceIndex + 3 &&
+        Number.isFinite(patternUnitDirs[sourceIndex])
+      ) {
+        ux = patternUnitDirs[sourceIndex];
+        uy = patternUnitDirs[sourceIndex + 1];
+        uz = patternUnitDirs[sourceIndex + 2];
+      } else {
+        const len = Math.hypot(px, py, pz) || 1.0;
+        ux = px / len;
+        uy = py / len;
+        uz = pz / len;
+      }
+    } else {
+      const point = randomPointOnSphere(0.1);
+      const len = Math.hypot(point.x, point.y, point.z) || 1.0;
+      px = point.x;
+      py = point.y;
+      pz = point.z;
+      ux = point.x / len;
+      uy = point.y / len;
+      uz = point.z / len;
+    }
 
     for (let j = 0; j < times; j++) {
       const idx3 = (i * times + j) * 3;
       const delayIndex = i * times + j;
 
-      positions[idx3 + 0] = point.x;
-      positions[idx3 + 1] = point.y;
-      positions[idx3 + 2] = point.z;
+      positions[idx3 + 0] = px;
+      positions[idx3 + 1] = py;
+      positions[idx3 + 2] = pz;
 
       unitDirs[idx3 + 0] = ux;
       unitDirs[idx3 + 1] = uy;
@@ -428,8 +576,45 @@ const launchFireworkSequence = (options = {}, fireworkFactory) => {
 };
 
 const startFireworkShow = () => {
+  fireworkLaunchToken += 1;
+  const launchToken = fireworkLaunchToken;
   stopAllLaunchSequences();
   const category = params.category;
+
+  if (category === fireWorkCategory.heart) {
+    loadHeartPattern()
+      .then((pattern) => {
+        if (launchToken !== fireworkLaunchToken) {
+          return;
+        }
+        if (!pattern?.positions || !pattern?.unitDirs || !pattern?.count) {
+          console.warn(
+            "Heart model has no usable geometry. Using default firework."
+          );
+          launchFireworkSequence();
+          return;
+        }
+        launchFireworkSequence(
+          { numberOfParticles: pattern.count },
+          (matrix) => {
+            createFirework({
+              numberOfParticles: pattern.count,
+              matrix,
+              patternPositions: pattern.positions,
+              patternUnitDirs: pattern.unitDirs,
+              patternCount: pattern.count,
+            });
+          }
+        );
+      })
+      .catch((error) => {
+        console.error("Failed to load heart firework pattern.", error);
+        if (launchToken === fireworkLaunchToken) {
+          launchFireworkSequence();
+        }
+      });
+    return;
+  }
 
   if (category === fireWorkCategory.botan) {
     const innerRadius = params.radius * 0.6;
