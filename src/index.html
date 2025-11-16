@@ -23,7 +23,8 @@
         id="resetCameraButton"
         type="button"
       >
-        Back to Viewpoint
+        <span class="material-icons-outlined"> arrow_circle_left </span>
+        <span> 視点をリセット </span>
       </button>
       <div class="instruction-card">
         <div class="instruction-card__body">
@@ -244,48 +245,7 @@
           </button>
         </div>
         <div class="timeline-panel__body">
-          <div class="timeline-carousel" id="timelineCarousel">
-            <button
-              class="timeline-card is-active"
-              data-firework-type="kiku"
-              data-firework-color="cream"
-              type="button"
-            >
-              <span class="timeline-card__title">菊</span>
-            </button>
-            <button
-              class="timeline-card"
-              data-firework-type="botan"
-              data-firework-color="purple"
-              type="button"
-            >
-              <span class="timeline-card__title">牡丹</span>
-            </button>
-            <button
-              class="timeline-card"
-              data-firework-type="meshibe"
-              data-firework-color="white"
-              type="button"
-            >
-              <span class="timeline-card__title">雌蕊芯入</span>
-            </button>
-            <button
-              class="timeline-card"
-              data-firework-type="heart"
-              data-firework-color="hotPink"
-              type="button"
-            >
-              <span class="timeline-card__title">ハート</span>
-            </button>
-            <button
-              class="timeline-card"
-              data-firework-type="love"
-              data-firework-color="red"
-              type="button"
-            >
-              <span class="timeline-card__title">告白</span>
-            </button>
-          </div>
+          <div class="timeline-carousel" id="timelineCarousel"></div>
           <div class="timeline-progress">
             <input type="range" min="0" max="100" value="0" />
           </div>

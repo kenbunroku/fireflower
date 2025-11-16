@@ -514,7 +514,7 @@ function setResetCameraButtonVisible(isVisible) {
   if (!resetCameraButton) {
     return;
   }
-  resetCameraButton.style.display = isVisible ? "block" : "none";
+  resetCameraButton.style.display = isVisible ? "flex" : "none";
 }
 
 setResetCameraButtonVisible(false);
@@ -813,32 +813,81 @@ if (fireworkTypeCards.length > 0) {
   setActiveFireworkTypeCard(activeFireworkCategoryKey);
 }
 
-const timelineCards = document.querySelectorAll(".timeline-card");
+const timelineSelections = [];
+const timelineCarousel = document.getElementById("timelineCarousel");
+let timelineCards = timelineCarousel
+  ? Array.from(timelineCarousel.querySelectorAll(".timeline-card"))
+  : [];
 const setActiveTimelineCard = (targetCard) => {
   timelineCards.forEach((card) => {
     card.classList.toggle("is-active", card === targetCard);
   });
 };
+const handleTimelineCardClick = (card) => {
+  setActiveTimelineCard(card);
+  const typeKey = card.dataset.fireworkType;
+  const colorKey = card.dataset.fireworkColor;
+  const launchHeight = card.dataset.launchHeight;
+  let shouldRestart = false;
+  if (typeKey && typeKey !== activeFireworkCategoryKey) {
+    setActiveFireworkCategory(typeKey, { autoStart: false });
+    shouldRestart = true;
+  }
+  if (colorKey && colorKey !== activeFireworkColorKey) {
+    updateFireworkColors(colorKey);
+  }
+  if (typeof launchHeight === "string" && launchHeight.length > 0) {
+    const numericHeight = Number(launchHeight);
+    if (Number.isFinite(numericHeight)) {
+      if (heightSlider) {
+        heightSlider.value = String(numericHeight);
+      }
+      syncHeightValue(numericHeight);
+    }
+  }
+  if (shouldRestart) {
+    startFireworkShow();
+  }
+};
+const registerTimelineCard = (card) => {
+  if (!card) {
+    return;
+  }
+  card.addEventListener("click", () => handleTimelineCardClick(card));
+};
+const addTimelineCard = ({
+  fireworkType,
+  fireworkColorKey,
+  launchHeight,
+  fireworkColorHex,
+}) => {
+  if (!timelineCarousel) {
+    return;
+  }
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = "timeline-card";
+  card.dataset.fireworkType = fireworkType;
+  card.dataset.fireworkColor = fireworkColorKey;
+  card.dataset.launchHeight = String(launchHeight);
+  const title = document.createElement("span");
+  title.className = "timeline-card__title";
+  title.textContent = fireWorkCategory[fireworkType] ?? fireworkType;
+  const meta = document.createElement("span");
+  meta.className = "timeline-card__meta";
+  const colorLabel = fireworkColorPresets[fireworkColorKey]
+    ? fireworkColorKey
+    : fireworkColorHex?.toUpperCase() || "CUSTOM";
+  meta.textContent = `${colorLabel} / 高さ ${launchHeight}m`;
+  card.append(title, meta);
+  timelineCarousel.appendChild(card);
+  timelineCards.push(card);
+  registerTimelineCard(card);
+  setActiveTimelineCard(card);
+};
 
 if (timelineCards.length > 0) {
-  timelineCards.forEach((card) => {
-    card.addEventListener("click", () => {
-      setActiveTimelineCard(card);
-      const typeKey = card.dataset.fireworkType;
-      const colorKey = card.dataset.fireworkColor;
-      let shouldRestart = false;
-      if (typeKey && typeKey !== activeFireworkCategoryKey) {
-        setActiveFireworkCategory(typeKey, { autoStart: false });
-        shouldRestart = true;
-      }
-      if (colorKey && colorKey !== activeFireworkColorKey) {
-        updateFireworkColors(colorKey);
-      }
-      if (shouldRestart) {
-        startFireworkShow();
-      }
-    });
-  });
+  timelineCards.forEach(registerTimelineCard);
 }
 
 const timelineProgressContainer = document.querySelector(".timeline-progress");
@@ -985,10 +1034,21 @@ if (heightSlider) {
 const addFireworkButton = document.getElementById("addFireworkButton");
 if (addFireworkButton) {
   addFireworkButton.addEventListener("click", () => {
-    createFirework({
-      fireworkColor: params.fireworkColor,
-      matrix: createRandomizedLaunchMatrix(),
+    const fireworkColorHex =
+      resolveFireworkHex(activeFireworkColorKey) ?? params.fireworkColor;
+    const selection = {
+      fireworkType: activeFireworkCategoryKey,
+      fireworkColorKey: activeFireworkColorKey,
+      fireworkColorHex,
       launchHeight: params.height,
+      createdAt: Date.now(),
+    };
+    timelineSelections.push(selection);
+    addTimelineCard(selection);
+    createFirework({
+      fireworkColor: fireworkColorHex,
+      matrix: createRandomizedLaunchMatrix(),
+      launchHeight: selection.launchHeight,
     });
   });
 }
