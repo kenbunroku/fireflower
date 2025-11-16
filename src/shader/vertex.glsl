@@ -4,11 +4,8 @@ in float batchId;
 in float delay;
 in vec3 unitDir;
 
-    // 点サイズ
 uniform float u_pointSize;
 uniform float u_time;
-uniform float u_amplitude;
-uniform float u_period;
 uniform float u_radius;
 uniform float u_launchHeight;
 uniform float u_launchProgress;
