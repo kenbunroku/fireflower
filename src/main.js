@@ -672,6 +672,17 @@ window.addEventListener("resize", () => {
   threeCamera.updateProjectionMatrix();
 });
 
+const instructionCard = document.querySelector(".instruction-card");
+const instructionCardCloseButton = document.querySelector(
+  ".instruction-card__close-button"
+);
+if (instructionCard && instructionCardCloseButton) {
+  instructionCardCloseButton.addEventListener("click", () => {
+    instructionCard.classList.add("is-hidden");
+    instructionCard.setAttribute("aria-hidden", "true");
+  });
+}
+
 const fireworkColorButtons = document.querySelectorAll(
   ".firework-color-button"
 );
