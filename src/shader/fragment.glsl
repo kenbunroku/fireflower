@@ -3,12 +3,16 @@ uniform float u_time;
 uniform float u_bloomDuration;
 
 void main() {
-      // 円形スプライトにしたい場合は距離でマスク
   vec2 uv = gl_PointCoord - 0.5;
-  if(length(uv) > 0.5)
+  float distanceToCenter = length(uv);
+  if(distanceToCenter > 0.5)
     discard;
 
-  float alpha = 1. - smoothstep(0.0, 1.0, u_time / u_bloomDuration);
+  float bloomAlpha = 1. * (1. - smoothstep(0.0, 1.0, u_time / u_bloomDuration));
+  float pointAlpha = 0.05 / distanceToCenter - 0.1;
+  float alpha = bloomAlpha * pointAlpha;
+  float colorMix = clamp(distanceToCenter / 0.35, 0.0, 1.0);
+  vec3 color = mix(vec3(1.0), u_color.xyz, colorMix);
 
-  out_FragColor = vec4(u_color.xyz, u_color.a * alpha);
+  out_FragColor = vec4(color.rgb, alpha);
 }
