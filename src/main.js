@@ -4,13 +4,16 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { Pane } from "tweakpane";
 
+import vs from "./shader/vertex.glsl";
+import fs from "./shader/fragment.glsl";
+
 const isDebugMode = true;
 
 const pane = new Pane();
 
 // Loaders
 const dracoLoader = new DRACOLoader();
-dracoLoader.setDecoderPath("./draco/");
+dracoLoader.setDecoderPath("./static/draco/");
 const gltfLoader = new GLTFLoader();
 gltfLoader.setDRACOLoader(dracoLoader);
 
@@ -26,12 +29,12 @@ const params = {
   category: fireWorkCategory.kiku,
   numberOfParticles: 400,
   pointSize: 3.0,
-  radius: 100,
-  fireworkColor: "#ffd700",
+  radius: 90,
+  fireworkColor: "#ffd256",
   launchDuration: 2.0,
-  bloomDuration: 3.0,
+  bloomDuration: 2,
   fireworkDuration: 5.0,
-  times: 75,
+  times: 50,
   buildingColor: "#5fd4ff",
   buildingOpacity: 0.7,
   launchOffsetRangeMeters: 100.0,
@@ -50,12 +53,16 @@ const modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(
 );
 
 const fireworkColorPresets = {
-  gold: { hex: "#ffd700", secondary: "cyan" },
-  magenta: { hex: "#ff4dff", secondary: "white" },
-  cyan: { hex: "#4dd2ff", secondary: "gold" },
-  white: { hex: "#ffffff", secondary: "magenta" },
+  cream: { hex: "#ffe0af", secondary: "cyan" },
+  pink: { hex: "#ffa6ea", secondary: "white" },
+  hotPink: { hex: "#ff4181", secondary: "white" },
+  purple: { hex: "#8775ff", secondary: "gold" },
+  orange: { hex: "#ff8c4e", secondary: "gold" },
+  green: { hex: "#00de0b", secondary: "gold" },
+  red: { hex: "#e00100", secondary: "purple" },
+  white: { hex: "#ecf1ff", secondary: "magenta" },
 };
-const defaultFireworkColorKey = "gold";
+const defaultFireworkColorKey = "cream";
 
 const setup = () => {
   setupPlateauAssets();
@@ -196,62 +203,28 @@ function randomPointOnSphere(radius = 1) {
   return { x, y, z }; // Vector3の代わりにオブジェクト
 }
 
-const fireworkVertexShaderSource = `
-    in vec3 position3DHigh;
-    in vec3 position3DLow;
-    in float batchId;
-    in float delay;
-    in vec3 unitDir;
+const fireworkVertexShaderSource = vs;
+const fireworkFragmentShaderSource = fs;
 
-    // 点サイズ
-    uniform float u_pointSize;
-    uniform float u_time;
-    uniform float u_amplitude;
-    uniform float u_period;
-    uniform float u_radius;
-    uniform float u_launchHeight;
-    uniform float u_launchProgress;
-    uniform float u_bloomDuration;
+let modelPositions = [];
 
-    float easingOutQuint(float t) {
-      return 1.0 - pow(1.0 - t, 5.0);
+gltfLoader.load(
+  "./models.glb",
+  (gltf) => {
+    // Positions
+    const positions = gltf.scene.children.map(
+      (child) => child.geometry.attributes.position
+    );
+
+    for (const position of positions) {
+      modelPositions = position.array;
     }
-
-    void main() {
-      vec4 p = czm_translateRelativeToEye(position3DHigh, position3DLow);
-      vec3 dir = unitDir;
-
-      float t = max(u_time - delay, 0.0);
-
-      float d1 = easingOutQuint(t / u_bloomDuration);
-      float grav = 9.8;
-      vec3 gravP = vec3(0., 0., -1.) * (t * t * grav) * 0.5;
-      float launchProgress = clamp(u_launchProgress, 0.0, 1.0);
-      float launchOffset = u_launchHeight * launchProgress;
-      vec3 newP = (p.xyz + dir * d1 * u_radius) + gravP;
-      newP.z += launchOffset;
-      p.xyz = newP;
-
-      gl_Position = czm_modelViewProjectionRelativeToEye * vec4(p.xyz, 1.);
-      gl_PointSize = u_pointSize* (1.- delay * 1.);
-    }
-  `;
-
-const fireworkFragmentShaderSource = `
-    uniform vec4 u_color;
-    uniform float u_time;
-    uniform float u_bloomDuration;
-
-    void main() {
-      // 円形スプライトにしたい場合は距離でマスク
-      vec2 uv = gl_PointCoord - 0.5;
-      if (length(uv) > 0.5) discard;
-
-      float alpha = 1. - smoothstep(0.0, 1.0, u_time / u_bloomDuration);
-
-      out_FragColor = vec4(u_color.xyz, u_color.a * alpha);
-    }
-  `;
+  },
+  undefined,
+  (err) => {
+    console.error("GLTF load error:", err);
+  }
+);
 
 const createFireworkMaterial = () =>
   new Cesium.MaterialAppearance({
@@ -260,6 +233,10 @@ const createFireworkMaterial = () =>
     vertexShaderSource: fireworkVertexShaderSource,
     fragmentShaderSource: fireworkFragmentShaderSource,
     materialCacheKey: "simple-points",
+    renderState: {
+      depthMask: false,
+      blending: Cesium.BlendingState.ADDITIVE_BLEND,
+    },
   });
 
 export const createFirework = (options = {}) => {
@@ -281,16 +258,33 @@ export const createFirework = (options = {}) => {
   const unitDirs = new Float32Array(numberOfParticles * 3 * times);
 
   const category = params.category;
-  if (category === fireWorkCategory.heart) {
-    gltfLoader.load("./models.glb", (gltf) => {
-      particles = {};
-      particles.index = 0;
 
-      // Positions
-      const positions = gltf.scene.children.map(
-        (child) => child.geometry.attributes.position
-      );
-    });
+  if (category === fireWorkCategory.heart) {
+    for (let i = 0; i < numberOfParticles; i++) {
+      const idx3Base = i * 3;
+      const x = (modelPositions[idx3Base + 0] / 5) * 0.1;
+      const y = (modelPositions[idx3Base + 1] / 5) * 0.1;
+      const z = (modelPositions[idx3Base + 2] / 5) * 0.1;
+      const len = Math.hypot(x, y, z) || 1.0;
+      const ux = x / len;
+      const uy = y / len;
+      const uz = z / len;
+
+      for (let j = 0; j < times; j++) {
+        const idx3 = (i * times + j) * 3;
+        const delayIndex = i * times + j;
+
+        positions[idx3 + 0] = x;
+        positions[idx3 + 1] = y;
+        positions[idx3 + 2] = z;
+
+        unitDirs[idx3 + 0] = ux;
+        unitDirs[idx3 + 1] = uy;
+        unitDirs[idx3 + 2] = uz;
+
+        delays[delayIndex] = j * delayStep;
+      }
+    }
   } else {
     for (let i = 0; i < numberOfParticles; i++) {
       const point = randomPointOnSphere(0.1);
@@ -357,6 +351,8 @@ export const createFirework = (options = {}) => {
     asynchronous: false,
     modelMatrix: matrix,
   });
+  // Disable frustum culling so fireworks remain visible after shader displacement.
+  primitive.cull = false;
   scene.primitives.add(primitive);
 
   const firework = {
@@ -758,6 +754,135 @@ if (fireworkColorButtons.length > 0) {
   updateFireworkColors(activeFireworkColorKey);
 }
 
+const resolveCategoryKeyFromValue = (value) => {
+  const entry = Object.entries(fireWorkCategory).find(
+    ([, label]) => label === value
+  );
+  return entry?.[0];
+};
+
+const fireworkTypeCards = document.querySelectorAll(".firework-type-card");
+let activeFireworkCategoryKey =
+  resolveCategoryKeyFromValue(params.category) ?? "kiku";
+
+const setActiveFireworkTypeCard = (categoryKey) => {
+  fireworkTypeCards.forEach((card) => {
+    const key = card.dataset.fireworkType;
+    card.classList.toggle("is-active", key === categoryKey);
+  });
+};
+
+const setActiveFireworkCategory = (
+  categoryKey,
+  { autoStart = true } = {}
+) => {
+  const categoryLabel = fireWorkCategory[categoryKey];
+  if (!categoryLabel) {
+    return;
+  }
+  if (categoryKey === activeFireworkCategoryKey && !autoStart) {
+    setActiveFireworkTypeCard(categoryKey);
+    return;
+  }
+  activeFireworkCategoryKey = categoryKey;
+  params.category = categoryLabel;
+  setActiveFireworkTypeCard(categoryKey);
+  if (autoStart) {
+    startFireworkShow();
+  }
+};
+
+if (fireworkTypeCards.length > 0) {
+  fireworkTypeCards.forEach((card) => {
+    card.addEventListener("click", () => {
+      const typeKey = card.dataset.fireworkType;
+      if (!typeKey || typeKey === activeFireworkCategoryKey) {
+        return;
+      }
+      setActiveFireworkCategory(typeKey);
+    });
+  });
+  setActiveFireworkTypeCard(activeFireworkCategoryKey);
+}
+
+const timelineCards = document.querySelectorAll(".timeline-card");
+const setActiveTimelineCard = (targetCard) => {
+  timelineCards.forEach((card) => {
+    card.classList.toggle("is-active", card === targetCard);
+  });
+};
+
+if (timelineCards.length > 0) {
+  timelineCards.forEach((card) => {
+    card.addEventListener("click", () => {
+      setActiveTimelineCard(card);
+      const typeKey = card.dataset.fireworkType;
+      const colorKey = card.dataset.fireworkColor;
+      let shouldRestart = false;
+      if (typeKey && typeKey !== activeFireworkCategoryKey) {
+        setActiveFireworkCategory(typeKey, { autoStart: false });
+        shouldRestart = true;
+      }
+      if (colorKey && colorKey !== activeFireworkColorKey) {
+        updateFireworkColors(colorKey);
+      }
+      if (shouldRestart) {
+        startFireworkShow();
+      }
+    });
+  });
+}
+
+const heightSlider = document.getElementById("heightSlider");
+const heightValue = document.getElementById("heightValue");
+const syncHeightValue = (value) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) {
+    return;
+  }
+  params.height = numericValue;
+  if (heightValue) {
+    heightValue.textContent = String(numericValue);
+  }
+  fireworks.forEach((firework) => {
+    if (firework.appearance?.uniforms) {
+      firework.appearance.uniforms.u_launchHeight = numericValue;
+    }
+  });
+};
+if (heightSlider) {
+  heightSlider.value = String(params.height);
+  syncHeightValue(params.height);
+  heightSlider.addEventListener("input", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) {
+      return;
+    }
+    syncHeightValue(target.value);
+  });
+}
+
+const addFireworkButton = document.getElementById("addFireworkButton");
+if (addFireworkButton) {
+  addFireworkButton.addEventListener("click", () => {
+    createFirework({
+      fireworkColor: params.fireworkColor,
+      matrix: createRandomizedLaunchMatrix(),
+      launchHeight: params.height,
+    });
+  });
+}
+
+const modeTabs = document.querySelectorAll(".panel-tab");
+if (modeTabs.length > 0) {
+  modeTabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      modeTabs.forEach((peer) => peer.classList.remove("is-active"));
+      tab.classList.add("is-active");
+    });
+  });
+}
+
 const initialViewHeading = Cesium.Math.toRadians(200);
 const initialViewPitch = Cesium.Math.toRadians(-20);
 const initialViewRange = 2000.0;
@@ -936,7 +1061,7 @@ const createDebugPane = () => {
   pane
     .addBinding(params, "times", {
       min: 1,
-      max: 50,
+      max: 100,
       step: 1,
     })
     .on("change", (event) => {
