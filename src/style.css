@@ -51,6 +51,10 @@ body {
   pointer-events: auto;
 }
 
+.instruction-card.is-hidden {
+  display: none;
+}
+
 .instruction-card__header {
   display: flex;
   align-items: center;
@@ -79,6 +83,11 @@ body {
   background: none;
   padding: 0;
   cursor: pointer;
+}
+
+.instruction-card__close-button .material-icons-outlined {
+  font-size: 1.5em;
+  vertical-align: middle;
 }
 
 .instruction-card__text {
@@ -250,7 +259,7 @@ body {
   align-items: center;
 }
 
-.firework-type-card__content .material-icons-outlined {
+.firework-type-card__icon {
   font-size: 1.1rem;
   color: #fff;
   opacity: 0;
@@ -258,7 +267,7 @@ body {
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.firework-type-card.is-active .material-icons-outlined {
+.firework-type-card.is-active .firework-type-card__icon {
   opacity: 1;
   transform: scale(1);
 }
