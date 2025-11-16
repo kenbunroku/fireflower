@@ -9,8 +9,246 @@
   </head>
   <body>
     <div id="cesiumContainer"></div>
-    <!-- <button id="startExperienceButton" type="button">Start Fireworks</button> -->
-    <button id="resetCameraButton" type="button">Back to Viewpoint</button>
+    <div class="hud-layer">
+      <button
+        class="glass reset-camera-button"
+        id="resetCameraButton"
+        type="button"
+      >
+        Back to Viewpoint
+      </button>
+      <div class="instruction-card">
+        <div class="instruction-card__body">
+          <button class="instruction-card__close-button">閉じる</button>
+          <p class="instruction-card__text">拡⼤縮⼩：マウスホイール</p>
+          <div class="instruction-card__row">
+            <p class="instruction-card__text">視点変更：</p>
+            <div>
+              <p class="instruction-card__text">右ドラッグ</p>
+              <p class="instruction-card__text">または建物をクリック</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="control-panel glass" aria-label="花火ジェネレーターの設定">
+        <div class="panel-body">
+          <header class="panel-header">
+            <div class="panel-header__titles">
+              <h1 class="panel-title">花火ジェネレーター</h1>
+            </div>
+          </header>
+
+          <div class="panel-tabs" role="tablist" aria-label="演出モード">
+            <button class="panel-tab is-active" data-mode="solo" type="button">
+              単発
+            </button>
+            <button class="panel-tab" data-mode="burst" type="button">
+              連発
+            </button>
+          </div>
+
+          <section class="panel-section">
+            <div class="section-heading">
+              <p class="section-title">花火の種類</p>
+              <p class="section-subtitle">花火のパターンを選択</p>
+            </div>
+            <div class="firework-type-grid">
+              <button
+                class="firework-type-card is-active"
+                data-firework-type="kiku"
+                type="button"
+              >
+                <span class="firework-type-card__label">菊</span>
+                <span class="firework-type-card__badge">定番</span>
+              </button>
+              <button
+                class="firework-type-card"
+                data-firework-type="botan"
+                type="button"
+              >
+                <span class="firework-type-card__label">牡丹</span>
+                <span class="firework-type-card__badge">二重</span>
+              </button>
+              <button
+                class="firework-type-card"
+                data-firework-type="meshibe"
+                type="button"
+              >
+                <span class="firework-type-card__label">雌蕊芯入</span>
+                <span class="firework-type-card__badge">芯入</span>
+              </button>
+              <button
+                class="firework-type-card"
+                data-firework-type="heart"
+                type="button"
+              >
+                <span class="firework-type-card__label">ハート</span>
+                <span class="firework-type-card__badge">特別</span>
+              </button>
+              <button
+                class="firework-type-card"
+                data-firework-type="love"
+                type="button"
+              >
+                <span class="firework-type-card__label">告白</span>
+                <span class="firework-type-card__badge">演出</span>
+              </button>
+              <button
+                class="firework-type-card"
+                data-firework-type="love"
+                type="button"
+              >
+                <span class="firework-type-card__label">告白</span>
+                <span class="firework-type-card__badge">演出</span>
+              </button>
+              <button
+                class="firework-type-card"
+                data-firework-type="love"
+                type="button"
+              >
+                <span class="firework-type-card__label">告白</span>
+                <span class="firework-type-card__badge">演出</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="panel-section">
+            <div class="section-heading">
+              <p class="section-title">色</p>
+              <p class="section-subtitle">花火の色を選択</p>
+            </div>
+            <div class="firework-color-grid">
+              <button
+                class="firework-color-button"
+                data-firework-color="cream"
+                type="button"
+              ></button>
+              <button
+                class="firework-color-button"
+                data-firework-color="pink"
+                type="button"
+              ></button>
+              <button
+                class="firework-color-button"
+                data-firework-color="hotPink"
+                type="button"
+              ></button>
+              <button
+                class="firework-color-button"
+                data-firework-color="purple"
+                type="button"
+              ></button>
+              <button
+                class="firework-color-button"
+                data-firework-color="orange"
+                type="button"
+              ></button>
+              <button
+                class="firework-color-button"
+                data-firework-color="green"
+                type="button"
+              ></button>
+              <button
+                class="firework-color-button"
+                data-firework-color="red"
+                type="button"
+              ></button>
+              <button
+                class="firework-color-button"
+                data-firework-color="white"
+                type="button"
+              ></button>
+            </div>
+          </section>
+
+          <section class="panel-section">
+            <div class="section-heading">
+              <p class="section-title">高さ</p>
+              <p class="section-subtitle">
+                打ち上がる花火の高さ: <span id="heightValue">200</span>
+              </p>
+            </div>
+            <input
+              id="heightSlider"
+              class="panel-slider"
+              type="range"
+              min="20"
+              max="400"
+              step="10"
+              value="200"
+            />
+            <div class="slider-scale">
+              <span>20</span>
+              <span>100</span>
+              <span>200</span>
+              <span>300</span>
+              <span>400</span>
+            </div>
+          </section>
+        </div>
+
+        <button class="panel-cta" id="addFireworkButton" type="button">
+          + この設定で花火を追加
+        </button>
+      </aside>
+
+      <div class="timeline-panel glass">
+        <div class="timeline-panel__header">
+          <button class="timeline-play" type="button" aria-label="再生">
+            ▶
+          </button>
+        </div>
+        <div class="timeline-panel__body">
+          <div class="timeline-carousel" id="timelineCarousel">
+            <button
+              class="timeline-card is-active"
+              data-firework-type="kiku"
+              data-firework-color="cream"
+              type="button"
+            >
+              <span class="timeline-card__title">菊</span>
+            </button>
+            <button
+              class="timeline-card"
+              data-firework-type="botan"
+              data-firework-color="purple"
+              type="button"
+            >
+              <span class="timeline-card__title">牡丹</span>
+            </button>
+            <button
+              class="timeline-card"
+              data-firework-type="meshibe"
+              data-firework-color="white"
+              type="button"
+            >
+              <span class="timeline-card__title">雌蕊芯入</span>
+            </button>
+            <button
+              class="timeline-card"
+              data-firework-type="heart"
+              data-firework-color="hotPink"
+              type="button"
+            >
+              <span class="timeline-card__title">ハート</span>
+            </button>
+            <button
+              class="timeline-card"
+              data-firework-type="love"
+              data-firework-color="red"
+              type="button"
+            >
+              <span class="timeline-card__title">告白</span>
+            </button>
+          </div>
+          <div class="timeline-progress">
+            <input type="range" min="0" max="100" value="40" />
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="./main.js"></script>
   </body>
 </html>
