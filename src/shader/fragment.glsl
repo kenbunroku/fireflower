@@ -11,7 +11,7 @@ void main() {
   float bloomAlpha = 1. * (1. - smoothstep(0.0, 1.0, u_time / u_bloomDuration));
   float pointAlpha = 0.05 / distanceToCenter - 0.1;
   float alpha = bloomAlpha * pointAlpha;
-  float colorMix = clamp(distanceToCenter / 0.35, 0.0, 1.0);
+  float colorMix = clamp(distanceToCenter / 0.15, 0.0, 1.0);
   vec3 color = mix(vec3(1.0), u_color.xyz, colorMix);
 
   out_FragColor = vec4(color.rgb, alpha);
