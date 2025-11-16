@@ -108,15 +108,11 @@ body {
   gap: 18px;
   overflow-y: auto;
   padding-right: 8px;
+  scrollbar-width: none;
 }
 
 .panel-body::-webkit-scrollbar {
-  width: 4px;
-}
-
-.panel-body::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 999px;
+  display: none;
 }
 
 .panel-header {
