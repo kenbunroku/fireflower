@@ -5,6 +5,14 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="./style.css" />
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined"
+      rel="stylesheet"
+    />
     <title>Cesium and Three.js Integration</title>
   </head>
   <body>
@@ -19,7 +27,13 @@
       </button>
       <div class="instruction-card">
         <div class="instruction-card__body">
-          <button class="instruction-card__close-button">閉じる</button>
+          <button
+            class="instruction-card__header instruction-card__close-button"
+          >
+            <span class="material-icons-outlined"> close </span>
+            <span>閉じる</span>
+          </button>
+
           <p class="instruction-card__text">拡⼤縮⼩：マウスホイール</p>
           <div class="instruction-card__row">
             <p class="instruction-card__text">視点変更：</p>
@@ -59,56 +73,70 @@
                 data-firework-type="kiku"
                 type="button"
               >
-                <span class="firework-type-card__label">菊</span>
-                <span class="firework-type-card__badge">定番</span>
+                <div class="firework-type-card__content">
+                  <span class="firework-type-card__label">菊</span>
+                  <span class="material-icons-outlined">check_circle</span>
+                </div>
               </button>
               <button
                 class="firework-type-card"
                 data-firework-type="botan"
                 type="button"
               >
-                <span class="firework-type-card__label">牡丹</span>
-                <span class="firework-type-card__badge">二重</span>
+                <div class="firework-type-card__content">
+                  <span class="firework-type-card__label">牡丹</span>
+                  <span class="material-icons-outlined">check_circle</span>
+                </div>
               </button>
               <button
                 class="firework-type-card"
                 data-firework-type="meshibe"
                 type="button"
               >
-                <span class="firework-type-card__label">雌蕊芯入</span>
-                <span class="firework-type-card__badge">芯入</span>
+                <div class="firework-type-card__content">
+                  <span class="firework-type-card__label">雌蕊芯入</span>
+                  <span class="material-icons-outlined">check_circle</span>
+                </div>
               </button>
               <button
                 class="firework-type-card"
                 data-firework-type="heart"
                 type="button"
               >
-                <span class="firework-type-card__label">ハート</span>
-                <span class="firework-type-card__badge">特別</span>
+                <div class="firework-type-card__content">
+                  <span class="firework-type-card__label">冠菊</span>
+                  <span class="material-icons-outlined">check_circle</span>
+                </div>
               </button>
               <button
                 class="firework-type-card"
                 data-firework-type="love"
                 type="button"
               >
-                <span class="firework-type-card__label">告白</span>
-                <span class="firework-type-card__badge">演出</span>
+                <div class="firework-type-card__content">
+                  <span class="firework-type-card__label">ポカ物</span>
+                  <span class="material-icons-outlined">check_circle</span>
+                </div>
               </button>
               <button
                 class="firework-type-card"
                 data-firework-type="love"
                 type="button"
               >
-                <span class="firework-type-card__label">告白</span>
-                <span class="firework-type-card__badge">演出</span>
+                <div class="firework-type-card__content">
+                  <span class="firework-type-card__label">ハート</span>
+                  <span class="material-icons-outlined">check_circle</span>
+                </div>
               </button>
               <button
                 class="firework-type-card"
                 data-firework-type="love"
                 type="button"
               >
-                <span class="firework-type-card__label">告白</span>
-                <span class="firework-type-card__badge">演出</span>
+                <div class="firework-type-card__content">
+                  <span class="firework-type-card__label">告白</span>
+                  <span class="material-icons-outlined">check_circle</span>
+                </div>
               </button>
             </div>
           </section>
