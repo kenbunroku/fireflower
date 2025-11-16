@@ -452,7 +452,6 @@ timeline-panel__body {
 
 .timeline-card.is-active {
   border-color: rgba(255, 255, 255, 0.8);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
 }
 
 .timeline-card__title {
@@ -480,7 +479,6 @@ timeline-panel__body {
   height: 20px;
   border-radius: 50%;
   background: #fff;
-  border: 3px solid #5f8bff;
 }
 
 .reset-camera-button {
