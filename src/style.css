@@ -419,6 +419,9 @@ body {
   color: #0f1320;
   background: #fff;
   box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 timeline-panel__body {
@@ -432,7 +435,7 @@ timeline-panel__body {
 .timeline-carousel {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(120px, 1fr);
+  grid-auto-columns: minmax(100px, 1fr);
   gap: 12px;
   overflow-x: auto;
   padding-bottom: 4px;

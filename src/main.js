@@ -783,10 +783,7 @@ const setActiveFireworkTypeCard = (categoryKey) => {
   });
 };
 
-const setActiveFireworkCategory = (
-  categoryKey,
-  { autoStart = true } = {}
-) => {
+const setActiveFireworkCategory = (categoryKey, { autoStart = true } = {}) => {
   const categoryLabel = fireWorkCategory[categoryKey];
   if (!categoryLabel) {
     return;
@@ -841,6 +838,118 @@ if (timelineCards.length > 0) {
         startFireworkShow();
       }
     });
+  });
+}
+
+const timelineProgressContainer = document.querySelector(".timeline-progress");
+const timelineProgressInput = timelineProgressContainer?.querySelector(
+  'input[type="range"]'
+);
+const timelinePlayButton = document.querySelector(".timeline-play");
+const timelinePlaybackDurationMs = 10000;
+let timelineProgressAnimationId;
+let isTimelineProgressPlaying = false;
+
+const parseRangeValue = (value, fallback) => {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : fallback;
+};
+
+const getTimelineProgressBounds = (input) => {
+  const min = parseRangeValue(input.min, 0);
+  const max = parseRangeValue(input.max, 100);
+  const span = Math.max(max - min, 1);
+  return { min, max, span };
+};
+
+const resetTimelineProgress = () => {
+  if (!timelineProgressInput) {
+    return;
+  }
+  const { min } = getTimelineProgressBounds(timelineProgressInput);
+  timelineProgressInput.value = String(min);
+  timelineProgressInput.style.removeProperty("background");
+};
+
+const paintTimelineProgressTrack = (value) => {
+  if (!timelineProgressInput) {
+    return;
+  }
+  const { min, span } = getTimelineProgressBounds(timelineProgressInput);
+  const percent = ((value - min) / span) * 100;
+  if (percent <= 0) {
+    timelineProgressInput.style.removeProperty("background");
+    return;
+  }
+  const clampedPercent = Math.max(0, Math.min(100, percent));
+  timelineProgressInput.style.background = `linear-gradient(90deg, #ffffff 0%, #ffffff ${clampedPercent}%, rgba(255, 255, 255, 0.15) ${clampedPercent}%, rgba(255, 255, 255, 0.15) 100%)`;
+};
+
+const setTimelinePlayButtonState = (isPlaying) => {
+  if (!timelinePlayButton) {
+    return;
+  }
+  const iconName = isPlaying ? "stop" : "play_arrow";
+  timelinePlayButton.innerHTML = `<span class="material-icons">${iconName}</span>`;
+  timelinePlayButton.setAttribute("aria-label", isPlaying ? "停止" : "再生");
+};
+
+const stopTimelineProgressAnimation = ({ reset = false } = {}) => {
+  if (timelineProgressAnimationId) {
+    cancelAnimationFrame(timelineProgressAnimationId);
+    timelineProgressAnimationId = undefined;
+  }
+  if (reset) {
+    resetTimelineProgress();
+  }
+  isTimelineProgressPlaying = false;
+  setTimelinePlayButtonState(false);
+};
+
+const startTimelineProgressAnimation = () => {
+  if (!timelineProgressInput) {
+    return;
+  }
+  stopTimelineProgressAnimation({ reset: true });
+  const { min, span } = getTimelineProgressBounds(timelineProgressInput);
+  const animationStart = performance.now();
+  isTimelineProgressPlaying = true;
+  setTimelinePlayButtonState(true);
+
+  const animate = (now) => {
+    const elapsed = now - animationStart;
+    const ratio = Math.min(elapsed / timelinePlaybackDurationMs, 1);
+    const value = min + ratio * span;
+    timelineProgressInput.value = String(value);
+    paintTimelineProgressTrack(value);
+    if (ratio < 1) {
+      timelineProgressAnimationId = requestAnimationFrame(animate);
+      return;
+    }
+    stopTimelineProgressAnimation();
+  };
+
+  timelineProgressAnimationId = requestAnimationFrame(animate);
+};
+
+if (timelinePlayButton && timelineProgressInput) {
+  setTimelinePlayButtonState(false);
+  timelinePlayButton.addEventListener("click", () => {
+    if (isTimelineProgressPlaying) {
+      stopTimelineProgressAnimation();
+      return;
+    }
+    startTimelineProgressAnimation();
+  });
+}
+
+if (timelineProgressInput) {
+  timelineProgressInput.addEventListener("input", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) {
+      return;
+    }
+    paintTimelineProgressTrack(Number(target.value));
   });
 }
 
