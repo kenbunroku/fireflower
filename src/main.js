@@ -685,8 +685,9 @@ if (instructionCard && instructionCardCloseButton) {
   });
 }
 
-const fireworkColorButtons =
-  document.querySelectorAll(".firework-color-swatch");
+const fireworkColorButtons = document.querySelectorAll(
+  ".firework-color-swatch"
+);
 let fireworkColorBinding;
 let activeFireworkColorKey = defaultFireworkColorKey;
 
@@ -812,7 +813,27 @@ if (fireworkTypeCards.length > 0) {
 }
 
 const timelineSelections = [];
+const maxTimelineSelections = 9;
+const timelineModeIcons = {
+  solo: "bolt",
+  burst: "auto_awesome",
+};
+const timelineModeLabels = {
+  solo: "単発",
+  burst: "連発",
+};
+const defaultModeTab = document.querySelector(".panel-tab.is-active");
+let activeMode = defaultModeTab?.dataset.mode ?? "solo";
+const timelinePanel = document.querySelector(".timeline-panel");
 const timelineCarousel = document.getElementById("timelineCarousel");
+const updateTimelinePanelVisibility = () => {
+  if (!timelinePanel) {
+    return;
+  }
+  timelinePanel.style.display =
+    timelineSelections.length === 0 ? "none" : "";
+};
+updateTimelinePanelVisibility();
 let timelineCards = timelineCarousel
   ? Array.from(timelineCarousel.querySelectorAll(".timeline-card"))
   : [];
@@ -858,16 +879,19 @@ const addTimelineCard = ({
   fireworkColorKey,
   launchHeight,
   fireworkColorHex,
+  mode,
 }) => {
   if (!timelineCarousel) {
     return;
   }
-  const card = document.createElement("button");
-  card.type = "button";
+  const card = document.createElement("div");
   card.className = "timeline-card";
   card.dataset.fireworkType = fireworkType;
   card.dataset.fireworkColor = fireworkColorKey;
   card.dataset.launchHeight = String(launchHeight);
+  if (mode) {
+    card.dataset.mode = mode;
+  }
   const title = document.createElement("span");
   title.className = "timeline-card__title";
   title.textContent = fireWorkCategory[fireworkType] ?? fireworkType;
@@ -877,7 +901,21 @@ const addTimelineCard = ({
     ? fireworkColorKey
     : fireworkColorHex?.toUpperCase() || "CUSTOM";
   meta.textContent = `${colorLabel} / 高さ ${launchHeight}m`;
-  card.append(title, meta);
+  const colorIndicator = document.createElement("span");
+  colorIndicator.className = "timeline-card__color";
+  colorIndicator.style.backgroundColor =
+    fireworkColorHex || fireworkColorPresets[fireworkColorKey]?.hex || "#fff";
+  const modeLabel = (mode && timelineModeLabels[mode]) || timelineModeLabels.solo;
+  const modeIcon = (mode && timelineModeIcons[mode]) || timelineModeIcons.solo;
+  colorIndicator.title = modeLabel;
+  colorIndicator.setAttribute("role", "img");
+  colorIndicator.setAttribute("aria-label", `${modeLabel} / ${colorLabel}`);
+  const colorIndicatorIcon = document.createElement("span");
+  colorIndicatorIcon.className =
+    "material-icons-outlined timeline-card__color-icon";
+  colorIndicatorIcon.textContent = modeIcon;
+  colorIndicator.appendChild(colorIndicatorIcon);
+  card.append(colorIndicator, title, meta);
   timelineCarousel.appendChild(card);
   timelineCards.push(card);
   registerTimelineCard(card);
@@ -1030,8 +1068,19 @@ if (heightSlider) {
 }
 
 const addFireworkButton = document.getElementById("addFireworkButton");
+const updateAddFireworkButtonState = () => {
+  if (!addFireworkButton) {
+    return;
+  }
+  addFireworkButton.disabled =
+    timelineSelections.length >= maxTimelineSelections;
+};
+updateAddFireworkButtonState();
 if (addFireworkButton) {
   addFireworkButton.addEventListener("click", () => {
+    if (timelineSelections.length >= maxTimelineSelections) {
+      return;
+    }
     const fireworkColorHex =
       resolveFireworkHex(activeFireworkColorKey) ?? params.fireworkColor;
     const selection = {
@@ -1039,15 +1088,18 @@ if (addFireworkButton) {
       fireworkColorKey: activeFireworkColorKey,
       fireworkColorHex,
       launchHeight: params.height,
+      mode: activeMode,
       createdAt: Date.now(),
     };
     timelineSelections.push(selection);
+    updateTimelinePanelVisibility();
     addTimelineCard(selection);
     createFirework({
       fireworkColor: fireworkColorHex,
       matrix: createRandomizedLaunchMatrix(),
       launchHeight: selection.launchHeight,
     });
+    updateAddFireworkButtonState();
   });
 }
 
@@ -1057,6 +1109,9 @@ if (modeTabs.length > 0) {
     tab.addEventListener("click", () => {
       modeTabs.forEach((peer) => peer.classList.remove("is-active"));
       tab.classList.add("is-active");
+      if (tab.dataset.mode) {
+        activeMode = tab.dataset.mode;
+      }
     });
   });
 }
