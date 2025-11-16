@@ -228,7 +228,7 @@ body {
 .firework-type-card {
   position: relative;
   padding: 12px;
-  min-height: 100px;
+  min-height: 90px;
   border-radius: 8px;
   border: 1px solid transparent;
   background: radial-gradient(
@@ -297,7 +297,7 @@ body {
   gap: 10px;
 }
 
-.firework-color-button {
+.firework-color-swatch {
   width: 32px;
   height: 32px;
   border-radius: 8px;
@@ -307,36 +307,36 @@ body {
     border-color 0.15s ease;
 }
 
-.firework-color-button:hover {
+.firework-color-swatch:hover {
   transform: translateY(-2px);
 }
 
-.firework-color-button.is-active {
+.firework-color-swatch.is-active {
   border-color: #fff;
 }
 
-.firework-color-button[data-firework-color="cream"] {
+.firework-color-swatch[data-firework-color="cream"] {
   background: #ffe0af;
 }
-.firework-color-button[data-firework-color="pink"] {
+.firework-color-swatch[data-firework-color="pink"] {
   background: #ffa6ea;
 }
-.firework-color-button[data-firework-color="hotPink"] {
+.firework-color-swatch[data-firework-color="hotPink"] {
   background: #ff4181;
 }
-.firework-color-button[data-firework-color="purple"] {
+.firework-color-swatch[data-firework-color="purple"] {
   background: #8775ff;
 }
-.firework-color-button[data-firework-color="orange"] {
+.firework-color-swatch[data-firework-color="orange"] {
   background: #ff8c4e;
 }
-.firework-color-button[data-firework-color="green"] {
+.firework-color-swatch[data-firework-color="green"] {
   background: #00de0b;
 }
-.firework-color-button[data-firework-color="red"] {
+.firework-color-swatch[data-firework-color="red"] {
   background: #e00100;
 }
-.firework-color-button[data-firework-color="white"] {
+.firework-color-swatch[data-firework-color="white"] {
   background: #ecf1ff;
 }
 

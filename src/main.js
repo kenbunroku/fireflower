@@ -23,6 +23,8 @@ const fireWorkCategory = {
   meshibe: "めしべ",
   heart: "ハート",
   love: "告白",
+  poka: "ポカ物",
+  kanmukiku: "冠菊",
 };
 
 const params = {
@@ -683,9 +685,8 @@ if (instructionCard && instructionCardCloseButton) {
   });
 }
 
-const fireworkColorButtons = document.querySelectorAll(
-  ".firework-color-button"
-);
+const fireworkColorButtons =
+  document.querySelectorAll(".firework-color-swatch");
 let fireworkColorBinding;
 let activeFireworkColorKey = defaultFireworkColorKey;
 
@@ -783,21 +784,18 @@ const setActiveFireworkTypeCard = (categoryKey) => {
   });
 };
 
-const setActiveFireworkCategory = (categoryKey, { autoStart = true } = {}) => {
+const setActiveFireworkCategory = (categoryKey) => {
   const categoryLabel = fireWorkCategory[categoryKey];
   if (!categoryLabel) {
     return;
   }
-  if (categoryKey === activeFireworkCategoryKey && !autoStart) {
+  if (categoryKey === activeFireworkCategoryKey) {
     setActiveFireworkTypeCard(categoryKey);
     return;
   }
   activeFireworkCategoryKey = categoryKey;
   params.category = categoryLabel;
   setActiveFireworkTypeCard(categoryKey);
-  if (autoStart) {
-    startFireworkShow();
-  }
 };
 
 if (fireworkTypeCards.length > 0) {
