@@ -491,6 +491,7 @@ body {
   padding: 2px;
 }
 
+.timeline-card__color .material-icons-outlined,
 .timeline-card__color-icon {
   font-size: 14px;
   line-height: 1;
