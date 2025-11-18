@@ -243,6 +243,43 @@ body {
   transition: border 0.2s ease, transform 0.2s ease;
 }
 
+.firework-type-card[data-firework-type="kiku"],
+.firework-type-card[data-firework-type="botan"],
+.firework-type-card[data-firework-type="meshibe"],
+.firework-type-card[data-firework-type="kanmukiku"],
+.firework-type-card[data-firework-type="poka"],
+.firework-type-card[data-firework-type="heart"],
+.firework-type-card[data-firework-type="love"] {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.firework-type-card[data-firework-type="kiku"] {
+  background-image: url("/img/kiku.png");
+}
+
+.firework-type-card[data-firework-type="botan"] {
+  background-image: url("/img/botan.png");
+}
+
+.firework-type-card[data-firework-type="meshibe"] {
+  background-image: url("/img/shiyu.png");
+}
+
+.firework-type-card[data-firework-type="kanmukiku"] {
+  background-image: url("/img/kamurogiku.png");
+}
+
+.firework-type-card[data-firework-type="poka"] {
+  background-image: url("/img/pokamono.png");
+}
+
+.firework-type-card[data-firework-type="heart"],
+.firework-type-card[data-firework-type="love"] {
+  background-image: url("/img/heart.png");
+}
+
 .firework-type-card:hover {
   transform: translateY(-2px);
 }
@@ -261,6 +298,20 @@ body {
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
+}
+
+.firework-type-card__info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.firework-type-card__image {
+  width: 42px;
+  height: 42px;
+  border-radius: 6px;
+  object-fit: cover;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.35);
 }
 
 .firework-type-card__icon {
@@ -462,7 +513,8 @@ body {
   border-radius: 18px;
   padding: 14px;
   text-align: left;
-  background: rgba(255, 255, 255, 0.08);
+  background: linear-gradient(rgba(5, 8, 15, 0.65), rgba(5, 8, 15, 0.65)),
+    rgba(255, 255, 255, 0.08);
   color: #fff;
   cursor: pointer;
   aspect-ratio: 1 / 1;
@@ -471,6 +523,37 @@ body {
   justify-content: center;
   position: relative;
   transition: border 0.2s ease, transform 0.2s ease;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.timeline-card[data-firework-type="kiku"] {
+  background-image: url("/img/kiku.png");
+}
+
+.timeline-card[data-firework-type="botan"] {
+  background-image: url("/img/botan.png");
+}
+
+.timeline-card[data-firework-type="meshibe"] {
+  background-image: url("/img/shiyu.png");
+}
+
+.timeline-card[data-firework-type="kanmukiku"] {
+  background-image: url("/img/kamurogiku.png");
+}
+
+.timeline-card[data-firework-type="poka"] {
+  background-image: url("/img/pokamono.png");
+}
+
+.timeline-card[data-firework-type="heart"] {
+  background-image: url("/img/heart.png");
+}
+
+.timeline-card[data-firework-type="love"] {
+  background-image: url("/img/heart.png");
 }
 
 .timeline-card.is-active {
@@ -480,7 +563,7 @@ body {
 .timeline-card__color {
   position: absolute;
   top: 10px;
-  right: 10px;
+  left: 10px;
   width: 22px;
   height: 22px;
   border-radius: 50%;

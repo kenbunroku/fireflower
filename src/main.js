@@ -830,8 +830,7 @@ const updateTimelinePanelVisibility = () => {
   if (!timelinePanel) {
     return;
   }
-  timelinePanel.style.display =
-    timelineSelections.length === 0 ? "none" : "";
+  timelinePanel.style.display = timelineSelections.length === 0 ? "none" : "";
 };
 updateTimelinePanelVisibility();
 let timelineCards = timelineCarousel
@@ -894,18 +893,17 @@ const addTimelineCard = ({
   }
   const title = document.createElement("span");
   title.className = "timeline-card__title";
-  title.textContent = fireWorkCategory[fireworkType] ?? fireworkType;
   const meta = document.createElement("span");
   meta.className = "timeline-card__meta";
   const colorLabel = fireworkColorPresets[fireworkColorKey]
     ? fireworkColorKey
     : fireworkColorHex?.toUpperCase() || "CUSTOM";
-  meta.textContent = `${colorLabel} / 高さ ${launchHeight}m`;
   const colorIndicator = document.createElement("span");
   colorIndicator.className = "timeline-card__color";
   colorIndicator.style.backgroundColor =
     fireworkColorHex || fireworkColorPresets[fireworkColorKey]?.hex || "#fff";
-  const modeLabel = (mode && timelineModeLabels[mode]) || timelineModeLabels.solo;
+  const modeLabel =
+    (mode && timelineModeLabels[mode]) || timelineModeLabels.solo;
   const modeIcon = (mode && timelineModeIcons[mode]) || timelineModeIcons.solo;
   colorIndicator.title = modeLabel;
   colorIndicator.setAttribute("role", "img");
