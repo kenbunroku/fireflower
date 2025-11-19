@@ -858,16 +858,14 @@ const startTimelineProgressAnimation = () => {
   timelineProgressAnimationId = requestAnimationFrame(animate);
 };
 
-if (timelinePlayButton && timelineProgressInput) {
-  setTimelinePlayButtonState(false);
-  timelinePlayButton.addEventListener("click", () => {
-    if (isTimelineProgressPlaying) {
-      stopTimelineProgressAnimation();
-      return;
-    }
-    startTimelineProgressAnimation();
-  });
-}
+timelinePlayButton.addEventListener("click", () => {
+  if (isTimelineProgressPlaying) {
+    stopTimelineProgressAnimation();
+    return;
+  }
+  startTimelineProgressAnimation();
+  startFireworkShow();
+});
 
 if (timelineProgressInput) {
   timelineProgressInput.addEventListener("input", (event) => {
@@ -916,7 +914,7 @@ const updateAddFireworkButtonState = () => {
   addFireworkButton.disabled =
     timelineSelections.length >= maxTimelineSelections;
 };
-updateAddFireworkButtonState();
+
 if (addFireworkButton) {
   addFireworkButton.addEventListener("click", () => {
     if (timelineSelections.length >= maxTimelineSelections) {
@@ -935,11 +933,6 @@ if (addFireworkButton) {
     timelineSelections.push(selection);
     updateTimelinePanelVisibility();
     addTimelineCard(selection);
-    fireworkManager.createFirework({
-      fireworkColor: fireworkColorHex,
-      matrix: fireworkManager.createRandomizedLaunchMatrix(),
-      launchHeight: selection.launchHeight,
-    });
     updateAddFireworkButtonState();
   });
 }
