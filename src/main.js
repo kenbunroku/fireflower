@@ -55,14 +55,15 @@ const modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(
 );
 
 const fireworkColorPresets = {
-  cream: { hex: "#ffe0af", secondary: "cyan" },
-  pink: { hex: "#ffa6ea", secondary: "white" },
-  hotPink: { hex: "#ff4181", secondary: "white" },
-  purple: { hex: "#8775ff", secondary: "gold" },
-  orange: { hex: "#ff8c4e", secondary: "gold" },
-  green: { hex: "#00de0b", secondary: "gold" },
-  red: { hex: "#e00100", secondary: "purple" },
-  white: { hex: "#ecf1ff", secondary: "magenta" },
+  hotPink: { hex: "#ff4181", secondary: "#fdc322" },
+  yellow: { hex: "#fdc322", secondary: "#4483f9" },
+  pink: { hex: "#ffa6ea", secondary: "#ecf1ff" },
+  purple: { hex: "#8775ff", secondary: "#4effc1" },
+  orange: { hex: "#ff8c4e", secondary: "#9788ff" },
+  red: { hex: "#e00100", secondary: "#ffe0af" },
+  green: { hex: "#00de0b", secondary: "#ff7bdf" },
+  cream: { hex: "#ffe0af", secondary: "#ff6c1d" },
+  white: { hex: "#ecf1ff", secondary: "#5bcf21" },
 };
 const defaultFireworkColorKey = "cream";
 
@@ -208,19 +209,39 @@ function randomPointOnSphere(radius = 1) {
 const fireworkVertexShaderSource = vs;
 const fireworkFragmentShaderSource = fs;
 
-let modelPositions = [];
+let modelPositions = new Float32Array();
 
 gltfLoader.load(
-  "./heart.glb",
+  "./ハート.glb",
   (gltf) => {
-    // Positions
-    const positions = gltf.scene.children.map(
-      (child) => child.geometry.attributes.position
-    );
+    const positionAttributes = [];
+    gltf.scene.traverse((child) => {
+      if (!child.isMesh) {
+        return;
+      }
+      const positionAttr = child.geometry?.attributes?.position;
+      if (positionAttr?.array) {
+        positionAttributes.push(positionAttr.array);
+      }
+    });
 
-    for (const position of positions) {
-      modelPositions = position.array;
+    if (positionAttributes.length === 0) {
+      console.warn("heart.glb does not contain mesh positions.");
+      modelPositions = new Float32Array();
+      return;
     }
+
+    const totalLength = positionAttributes.reduce(
+      (sum, array) => sum + array.length,
+      0
+    );
+    const mergedPositions = new Float32Array(totalLength);
+    let offset = 0;
+    for (const array of positionAttributes) {
+      mergedPositions.set(array, offset);
+      offset += array.length;
+    }
+    modelPositions = mergedPositions;
   },
   undefined,
   (err) => {
@@ -261,12 +282,16 @@ export const createFirework = (options = {}) => {
 
   const category = params.category;
 
-  if (category === fireWorkCategory.heart) {
+  const isHeartCategory = category === fireWorkCategory.heart;
+  const hasModelPositions = modelPositions.length >= 3;
+
+  if (isHeartCategory && hasModelPositions) {
+    const vertexCount = Math.floor(modelPositions.length / 3) || 1;
     for (let i = 0; i < numberOfParticles; i++) {
-      const idx3Base = i * 3;
-      const x = (modelPositions[idx3Base + 0] / 5) * 0.1;
-      const y = (modelPositions[idx3Base + 1] / 5) * 0.1;
-      const z = (modelPositions[idx3Base + 2] / 5) * 0.1;
+      const vertexIndex = ((i % vertexCount) * 3) | 0;
+      const x = (modelPositions[vertexIndex + 0] / 5) * 0.1;
+      const y = (modelPositions[vertexIndex + 1] / 5) * 0.1;
+      const z = (modelPositions[vertexIndex + 2] / 5) * 0.1;
       const len = Math.hypot(x, y, z) || 1.0;
       const ux = x / len;
       const uy = y / len;
@@ -288,6 +313,11 @@ export const createFirework = (options = {}) => {
       }
     }
   } else {
+    if (isHeartCategory && !hasModelPositions) {
+      console.warn(
+        "Heart model positions are not loaded yet. Falling back to sphere distribution."
+      );
+    }
     for (let i = 0; i < numberOfParticles; i++) {
       const point = randomPointOnSphere(0.1);
       const len = Math.hypot(point.x, point.y, point.z) || 1.0;
@@ -468,12 +498,12 @@ const startFireworkShow = () => {
       createFirework({
         radius: innerRadius,
         matrix,
-        fireworkColor: primaryColorHex,
+        fireworkColor: secondaryColorHex,
       });
       createFirework({
         radius: outerRadius,
         matrix,
-        fireworkColor: secondaryColorHex,
+        fireworkColor: primaryColorHex,
       });
     });
     return;
