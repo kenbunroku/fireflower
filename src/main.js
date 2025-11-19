@@ -4,8 +4,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { Pane } from "tweakpane";
 
-import vs from "./shader/vertex.glsl";
-import fs from "./shader/fragment.glsl";
+import FireworkManager from "./FireworkManager";
 
 const isDebugMode = true;
 
@@ -21,31 +20,47 @@ const fireWorkCategory = {
   kiku: "菊",
   botan: "牡丹",
   meshibe: "めしべ",
-  heart: "ハート",
-  love: "告白",
   poka: "ポカ物",
   kanmukiku: "冠菊",
+  heart: "ハート",
+  love: "告白",
 };
 
 const params = {
   category: fireWorkCategory.kiku,
   numberOfParticles: 400,
-  pointSize: 3.0,
+  pointSize: 4.0,
   radius: 90,
   fireworkColor: "#ffd256",
   launchDuration: 2.0,
   bloomDuration: 2,
-  fireworkDuration: 5.0,
+  fireworkDuration: 10.0,
   times: 50,
+  gravityStrength: 1,
   buildingColor: "#5fd4ff",
   buildingOpacity: 0.7,
   launchOffsetRangeMeters: 100.0,
   height: 200,
+  delay: 0.005,
+  interval: 1.0,
 };
 
 const category = {
   kiku: {
     numberOfParticles: 400,
+    pointSize: 4.0,
+    bloomDuration: 2,
+    times: 50,
+    height: 200,
+    gravityStrength: 1,
+  },
+  shiyu: {
+    numberOfParticles: 400,
+    pointSize: 4.0,
+    bloomDuration: 2,
+    times: 50,
+    height: 200,
+    gravityStrength: 1,
   },
 };
 
@@ -82,7 +97,34 @@ const setupPlateauAssets = async () => {
   setupBloom();
 };
 
-const setupBloom = () => {};
+const setupBloom = () => {
+  if (!scene || !scene.postProcessStages) {
+    console.warn("Cesium scene is not ready for bloom setup.");
+    return;
+  }
+
+  if (bloom) {
+    return;
+  }
+
+  const postProcessStages = scene.postProcessStages;
+  bloom =
+    postProcessStages.bloom ||
+    postProcessStages.add(Cesium.PostProcessStageLibrary.createBloomStage());
+
+  if (!bloom) {
+    console.warn("Unable to initialize bloom post process stage.");
+    return;
+  }
+
+  bloom.enabled = true;
+  bloom.uniforms.glowOnly = false;
+  bloom.uniforms.contrast = 128.0; // 強めのコントラスト
+  bloom.uniforms.brightness = -0.4; // しきい値を下げる
+  bloom.uniforms.delta = 0.9;
+  bloom.uniforms.sigma = 4.0;
+  bloom.uniforms.stepSize = 1.0;
+};
 
 Cesium.Ion.defaultAccessToken =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkYTE4NjhhMy01YjM0LTQ0MDYtOThjMi1hNWJlYmI5MWY3YzQiLCJpZCI6MzQ2NzMzLCJpYXQiOjE3NTk0NTA4NDN9.IQ-97lJJ-qTrkTUllzEMiMAIgCVSEb9eQxwIbSJ_zjo";
@@ -106,15 +148,6 @@ scene = viewer.scene;
 scene.globe.depthTestAgainstTerrain = true;
 scene.debugShowFramesPerSecond = true;
 scene.highDynamicRange = true;
-
-bloom = scene.postProcessStages.bloom;
-bloom.enabled = true;
-bloom.uniforms.glowOnly = false;
-bloom.uniforms.contrast = 128.0; // 強めのコントラスト
-bloom.uniforms.brightness = -0.4; // しきい値を下げる
-bloom.uniforms.delta = 0.9;
-bloom.uniforms.sigma = 4.0;
-bloom.uniforms.stepSize = 1.0;
 
 const buildingTilesets = [];
 let buildingSilhouetteStage;
@@ -192,31 +225,16 @@ try {
 setup();
 
 // Particle system setup using point primitives
-const defaultDelayStep = 0.005;
-const defaultLaunchIntervalSeconds = 1.0;
-const fireworks = [];
-const launchSequences = new Set();
-const launchOffsetScratch = new Cesium.Cartesian3();
-const launchTranslationScratch = new Cesium.Matrix4();
+let heartModelPositions = new Float32Array();
 
-function randomPointOnSphere(radius = 1) {
-  const u = Math.random();
-  const v = Math.random();
-
-  const theta = 2 * Math.PI * u; // 経度
-  const phi = Math.acos(2 * v - 1); // 緯度（均等化）
-
-  const x = radius * Math.sin(phi) * Math.cos(theta);
-  const y = radius * Math.sin(phi) * Math.sin(theta);
-  const z = radius * Math.cos(phi);
-
-  return { x, y, z }; // Vector3の代わりにオブジェクト
-}
-
-const fireworkVertexShaderSource = vs;
-const fireworkFragmentShaderSource = fs;
-
-let modelPositions = new Float32Array();
+const fireworkManager = new FireworkManager({
+  scene,
+  params,
+  fireWorkCategory,
+  modelMatrix,
+  modelPositions: heartModelPositions,
+});
+const fireworks = fireworkManager.getFireworks();
 
 gltfLoader.load(
   "./heart.glb",
@@ -234,7 +252,8 @@ gltfLoader.load(
 
     if (positionAttributes.length === 0) {
       console.warn("heart.glb does not contain mesh positions.");
-      modelPositions = new Float32Array();
+      heartModelPositions = new Float32Array();
+      fireworkManager.setModelPositions(heartModelPositions);
       return;
     }
 
@@ -248,249 +267,24 @@ gltfLoader.load(
       mergedPositions.set(array, offset);
       offset += array.length;
     }
-    modelPositions = mergedPositions;
+    heartModelPositions = mergedPositions;
+    fireworkManager.setModelPositions(heartModelPositions);
   },
   undefined,
   (err) => {
     console.error("GLTF load error:", err);
+    heartModelPositions = new Float32Array();
+    fireworkManager.setModelPositions(heartModelPositions);
   }
 );
 
-const createFireworkMaterial = () =>
-  new Cesium.MaterialAppearance({
-    translucent: true,
-    closed: false,
-    vertexShaderSource: fireworkVertexShaderSource,
-    fragmentShaderSource: fireworkFragmentShaderSource,
-    materialCacheKey: "simple-points",
-    renderState: {
-      depthMask: false,
-      blending: Cesium.BlendingState.ADDITIVE_BLEND,
-    },
-  });
-
-export const createFirework = (options = {}) => {
-  const {
-    numberOfParticles = params.numberOfParticles,
-    times = params.times,
-    pointSize = params.pointSize,
-    radius = params.radius,
-    fireworkColor = params.fireworkColor,
-    launchDuration = params.launchDuration,
-    bloomDuration = params.bloomDuration,
-    launchHeight = params.height,
-    delayStep = defaultDelayStep,
-    matrix = modelMatrix,
-  } = options;
-
-  const positions = new Float32Array(numberOfParticles * 3 * times);
-  const delays = new Float32Array(numberOfParticles * times);
-  const unitDirs = new Float32Array(numberOfParticles * 3 * times);
-
-  const category = params.category;
-
-  const isHeartCategory = category === fireWorkCategory.heart;
-  const hasModelPositions = modelPositions.length >= 3;
-
-  if (isHeartCategory && hasModelPositions) {
-    const vertexCount = Math.floor(modelPositions.length / 3) || 1;
-    for (let i = 0; i < numberOfParticles; i++) {
-      const vertexIndex = ((i % vertexCount) * 3) | 0;
-      const x = (modelPositions[vertexIndex + 0] / 5) * 0.1;
-      const y = (modelPositions[vertexIndex + 1] / 5) * 0.1;
-      const z = (modelPositions[vertexIndex + 2] / 5) * 0.1;
-      const len = Math.hypot(x, y, z) || 1.0;
-      const ux = x / len;
-      const uy = y / len;
-      const uz = z / len;
-
-      for (let j = 0; j < times; j++) {
-        const idx3 = (i * times + j) * 3;
-        const delayIndex = i * times + j;
-
-        positions[idx3 + 0] = x;
-        positions[idx3 + 1] = y;
-        positions[idx3 + 2] = z;
-
-        unitDirs[idx3 + 0] = ux;
-        unitDirs[idx3 + 1] = uy;
-        unitDirs[idx3 + 2] = uz;
-
-        delays[delayIndex] = j * delayStep;
-      }
-    }
-  } else {
-    if (isHeartCategory && !hasModelPositions) {
-      console.warn(
-        "Heart model positions are not loaded yet. Falling back to sphere distribution."
-      );
-    }
-    for (let i = 0; i < numberOfParticles; i++) {
-      const point = randomPointOnSphere(0.1);
-      const len = Math.hypot(point.x, point.y, point.z) || 1.0;
-      const ux = point.x / len;
-      const uy = point.y / len;
-      const uz = point.z / len;
-
-      for (let j = 0; j < times; j++) {
-        const idx3 = (i * times + j) * 3;
-        const delayIndex = i * times + j;
-
-        positions[idx3 + 0] = point.x;
-        positions[idx3 + 1] = point.y;
-        positions[idx3 + 2] = point.z;
-
-        unitDirs[idx3 + 0] = ux;
-        unitDirs[idx3 + 1] = uy;
-        unitDirs[idx3 + 2] = uz;
-
-        delays[delayIndex] = j * delayStep;
-      }
-    }
-  }
-
-  const geometry = new Cesium.Geometry({
-    attributes: {
-      position: new Cesium.GeometryAttribute({
-        componentDatatype: Cesium.ComponentDatatype.DOUBLE,
-        componentsPerAttribute: 3,
-        values: positions,
-      }),
-      delay: new Cesium.GeometryAttribute({
-        componentDatatype: Cesium.ComponentDatatype.FLOAT,
-        componentsPerAttribute: 1,
-        values: delays,
-      }),
-      unitDir: new Cesium.GeometryAttribute({
-        componentDatatype: Cesium.ComponentDatatype.FLOAT,
-        componentsPerAttribute: 3,
-        values: unitDirs,
-      }),
-    },
-    primitiveType: Cesium.PrimitiveType.POINTS,
-    boundingSphere: Cesium.BoundingSphere.fromVertices(positions),
-  });
-
-  const appearance = createFireworkMaterial();
-  appearance.uniforms = {
-    u_color: Cesium.Color.fromCssColorString(fireworkColor, new Cesium.Color()),
-    u_pointSize: pointSize,
-    u_time: 0.0,
-    u_radius: radius,
-    u_duration: launchDuration,
-    u_launchHeight: launchHeight,
-    u_bloomDuration: bloomDuration,
-    u_launchProgress: 0.0,
-    u_gravityStrength: 1,
-  };
-
-  const instance = new Cesium.GeometryInstance({ geometry });
-  const primitive = new Cesium.Primitive({
-    geometryInstances: instance,
-    appearance,
-    asynchronous: false,
-    modelMatrix: matrix,
-  });
-  // Disable frustum culling so fireworks remain visible after shader displacement.
-  primitive.cull = false;
-  scene.primitives.add(primitive);
-
-  const firework = {
-    primitive,
-    appearance,
-    startTime: undefined,
-  };
-  fireworks.push(firework);
-  return firework;
-};
-
-const createRandomizedLaunchMatrix = (
-  baseMatrix = modelMatrix,
-  spreadMeters = params.launchOffsetRangeMeters
-) => {
-  const offsetX = (Math.random() - 0.5) * 2.0 * spreadMeters;
-  const offsetY = (Math.random() - 0.5) * 2.0 * spreadMeters;
-  Cesium.Cartesian3.fromElements(offsetX, offsetY, 0.0, launchOffsetScratch);
-  Cesium.Matrix4.fromTranslation(launchOffsetScratch, launchTranslationScratch);
-  return Cesium.Matrix4.multiply(
-    baseMatrix,
-    launchTranslationScratch,
-    new Cesium.Matrix4()
-  );
-};
-
-const stopLaunchSequence = (sequence) => {
-  if (!sequence) {
+const startFireworkShow = () => {
+  if (!fireworkManager) {
     return;
   }
-  sequence.active = false;
-  if (sequence.timeoutId) {
-    window.clearTimeout(sequence.timeoutId);
-  }
-  launchSequences.delete(sequence);
-};
 
-const stopAllLaunchSequences = () => {
-  Array.from(launchSequences).forEach((sequence) => {
-    stopLaunchSequence(sequence);
-  });
-};
+  fireworkManager.stopAllLaunchSequences();
 
-const launchFireworkSequence = (options = {}, fireworkFactory) => {
-  const durationSeconds = options.duration ?? params.fireworkDuration;
-  const intervalSeconds = Math.max(
-    options.interval ?? defaultLaunchIntervalSeconds,
-    0.1
-  );
-  const baseMatrix = options.matrix || modelMatrix;
-  const spread = options.spread ?? params.launchOffsetRangeMeters;
-  const now = () =>
-    typeof performance !== "undefined" ? performance.now() : Date.now();
-  const startTime = now();
-  const sequence = {
-    active: true,
-    timeoutId: undefined,
-  };
-  const defaultFactory = (matrix) => {
-    createFirework({
-      numberOfParticles: options.numberOfParticles,
-      times: options.times,
-      pointSize: options.pointSize,
-      radius: options.radius,
-      fireworkColor: options.fireworkColor ?? params.fireworkColor,
-      launchDuration: options.launchDuration,
-      bloomDuration: options.bloomDuration,
-      launchHeight: options.launchHeight,
-      delayStep: options.delayStep,
-      matrix,
-    });
-  };
-  const spawnFirework =
-    typeof fireworkFactory === "function" ? fireworkFactory : defaultFactory;
-
-  const launchOnce = () => {
-    if (!sequence.active) {
-      return;
-    }
-    const elapsedSeconds = (now() - startTime) * 0.001;
-    if (elapsedSeconds > durationSeconds) {
-      stopLaunchSequence(sequence);
-      return;
-    }
-
-    const fireworkMatrix = createRandomizedLaunchMatrix(baseMatrix, spread);
-    spawnFirework(fireworkMatrix);
-
-    sequence.timeoutId = window.setTimeout(launchOnce, intervalSeconds * 1000);
-  };
-
-  launchSequences.add(sequence);
-  launchOnce();
-  return () => stopLaunchSequence(sequence);
-};
-
-const startFireworkShow = () => {
-  stopAllLaunchSequences();
   const category = params.category;
 
   if (category === fireWorkCategory.botan) {
@@ -502,13 +296,13 @@ const startFireworkShow = () => {
       resolveFireworkHex(primaryPresetKey) ?? params.fireworkColor;
     const secondaryColorHex =
       resolveFireworkHex(secondaryPresetKey) ?? params.fireworkColor;
-    launchFireworkSequence({}, (matrix) => {
-      createFirework({
+    fireworkManager.launchFireworkSequence({}, (matrix) => {
+      fireworkManager.createFirework({
         radius: innerRadius,
         matrix,
         fireworkColor: primaryColorHex,
       });
-      createFirework({
+      fireworkManager.createFirework({
         radius: outerRadius,
         matrix,
         fireworkColor: secondaryColorHex,
@@ -517,10 +311,10 @@ const startFireworkShow = () => {
     return;
   }
 
-  launchFireworkSequence();
+  fireworkManager.launchFireworkSequence();
 };
 
-const getPrimaryAppearance = () => fireworks[0]?.appearance;
+const getPrimaryAppearance = () => fireworkManager.getPrimaryAppearance();
 
 const setPointColorFromHex = (
   hex,
@@ -538,7 +332,7 @@ const setPointColorFromHex = (
   targetAppearance.uniforms.u_color = color;
 };
 
-const primaryFirework = createFirework();
+const primaryFirework = fireworkManager.createFirework();
 setPointColorFromHex(params.fireworkColor, primaryFirework.appearance);
 
 const highlightState = {
@@ -782,6 +576,7 @@ function updateFireworkColors(colorKeyOrHex) {
     activeFireworkColorKey = presetKey;
   }
   params.fireworkColor = colorHex;
+
   fireworks.forEach((firework) => {
     setPointColorFromHex(colorHex, firework.appearance);
   });
@@ -860,10 +655,6 @@ const timelineModeIcons = {
 const timelineModeLabels = {
   solo: "単発",
   burst: "連発",
-};
-const timelineModePlaybackConfig = {
-  solo: { shots: 1, intervalMs: 0 },
-  burst: { shots: 3, intervalMs: 250 },
 };
 const defaultModeTab = document.querySelector(".panel-tab.is-active");
 let activeMode = defaultModeTab?.dataset.mode ?? "solo";
@@ -975,147 +766,6 @@ const timelinePlayButton = document.querySelector(".timeline-play");
 const timelinePlaybackDurationMs = 10000;
 let timelineProgressAnimationId;
 let isTimelineProgressPlaying = false;
-const timelineSelectionPlaybackMinimumSlotMs = 250;
-let timelineSelectionPlaybackController;
-
-const getTimelineModePlaybackSettings = (mode) =>
-  (mode && timelineModePlaybackConfig[mode]) ||
-  timelineModePlaybackConfig.solo;
-
-const resolveTimelineSelectionHeight = (selection) => {
-  if (
-    !selection ||
-    typeof selection.launchHeight !== "number" ||
-    Number.isNaN(selection.launchHeight)
-  ) {
-    return params.height;
-  }
-  return selection.launchHeight;
-};
-
-const scheduleTimelinePlaybackAction = (
-  controller,
-  callback,
-  delayMs = 0
-) => {
-  if (!controller) {
-    return;
-  }
-  const timeoutId = window.setTimeout(() => {
-    controller.pendingTimeoutIds.delete(timeoutId);
-    if (!controller.active) {
-      return;
-    }
-    callback();
-  }, Math.max(delayMs, 0));
-  controller.pendingTimeoutIds.add(timeoutId);
-};
-
-const stopTimelineSelectionPlayback = () => {
-  if (!timelineSelectionPlaybackController) {
-    return;
-  }
-  timelineSelectionPlaybackController.active = false;
-  timelineSelectionPlaybackController.pendingTimeoutIds.forEach((timeoutId) => {
-    window.clearTimeout(timeoutId);
-  });
-  timelineSelectionPlaybackController.pendingTimeoutIds.clear();
-  timelineSelectionPlaybackController = undefined;
-};
-
-const getTimelineSelectionColorHex = (selection) => {
-  if (!selection) {
-    return params.fireworkColor;
-  }
-  return (
-    selection.fireworkColorHex ||
-    resolveFireworkHex(selection.fireworkColorKey) ||
-    params.fireworkColor
-  );
-};
-
-const applyTimelineSelectionSettings = (selection) => {
-  if (!selection) {
-    return;
-  }
-  if (selection.fireworkType) {
-    setActiveFireworkCategory(selection.fireworkType);
-  }
-  const colorSelection =
-    selection.fireworkColorKey ?? selection.fireworkColorHex;
-  if (colorSelection) {
-    updateFireworkColors(colorSelection);
-  }
-  const height = resolveTimelineSelectionHeight(selection);
-  if (heightSlider) {
-    heightSlider.value = String(height);
-  }
-  syncHeightValue(height);
-};
-
-const launchTimelineSelectionFirework = (selection, controller) => {
-  if (!selection) {
-    return;
-  }
-  const colorHex = getTimelineSelectionColorHex(selection);
-  const height = resolveTimelineSelectionHeight(selection);
-  const { shots, intervalMs } = getTimelineModePlaybackSettings(
-    selection.mode
-  );
-  for (let i = 0; i < shots; i++) {
-    const delayMs = i * intervalMs;
-    scheduleTimelinePlaybackAction(
-      controller,
-      () => {
-        createFirework({
-          fireworkColor: colorHex,
-          launchHeight: height,
-          matrix: createRandomizedLaunchMatrix(),
-        });
-      },
-      delayMs
-    );
-  }
-};
-
-const startTimelineSelectionPlayback = () => {
-  if (timelineSelections.length === 0) {
-    return false;
-  }
-  stopTimelineSelectionPlayback();
-  const controller = {
-    active: true,
-    pendingTimeoutIds: new Set(),
-  };
-  timelineSelectionPlaybackController = controller;
-  const slotDurationMs = Math.max(
-    timelinePlaybackDurationMs / timelineSelections.length,
-    timelineSelectionPlaybackMinimumSlotMs
-  );
-  const playAtIndex = (index) => {
-    if (!controller.active) {
-      return;
-    }
-    if (index >= timelineSelections.length) {
-      stopTimelineSelectionPlayback();
-      return;
-    }
-    const selection = timelineSelections[index];
-    const card = timelineCards[index];
-    if (card) {
-      setActiveTimelineCard(card);
-    }
-    applyTimelineSelectionSettings(selection);
-    launchTimelineSelectionFirework(selection, controller);
-    scheduleTimelinePlaybackAction(
-      controller,
-      () => playAtIndex(index + 1),
-      slotDurationMs
-    );
-  };
-  playAtIndex(0);
-  return true;
-};
 
 const parseRangeValue = (value, fallback) => {
   const numericValue = Number(value);
@@ -1166,7 +816,6 @@ const stopTimelineProgressAnimation = ({ reset = false } = {}) => {
     cancelAnimationFrame(timelineProgressAnimationId);
     timelineProgressAnimationId = undefined;
   }
-  stopTimelineSelectionPlayback();
   if (reset) {
     resetTimelineProgress();
   }
@@ -1217,9 +866,6 @@ if (timelinePlayButton && timelineProgressInput) {
       return;
     }
     startTimelineProgressAnimation();
-    if (timelineSelections.length > 0) {
-      startTimelineSelectionPlayback();
-    }
   });
 }
 
@@ -1289,9 +935,9 @@ if (addFireworkButton) {
     timelineSelections.push(selection);
     updateTimelinePanelVisibility();
     addTimelineCard(selection);
-    createFirework({
+    fireworkManager.createFirework({
       fireworkColor: fireworkColorHex,
-      matrix: createRandomizedLaunchMatrix(),
+      matrix: fireworkManager.createRandomizedLaunchMatrix(),
       launchHeight: selection.launchHeight,
     });
     updateAddFireworkButtonState();
@@ -1422,7 +1068,7 @@ const createDebugPane = () => {
       step: 10,
     })
     .on("change", (event) => {
-      createFirework({
+      fireworkManager.createFirework({
         numberOfParticles: event.value,
       });
     });
@@ -1524,4 +1170,4 @@ const createDebugPane = () => {
     });
 };
 
-createDebugPane();
+if (isDebugMode) createDebugPane();
