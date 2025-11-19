@@ -42,6 +42,13 @@ const params = {
   launchOffsetRangeMeters: 100.0,
   height: 200,
 };
+
+const category = {
+  kiku: {
+    numberOfParticles: 400,
+  },
+};
+
 let viewer, scene;
 let bloom;
 
@@ -212,7 +219,7 @@ const fireworkFragmentShaderSource = fs;
 let modelPositions = new Float32Array();
 
 gltfLoader.load(
-  "./ハート.glb",
+  "./heart.glb",
   (gltf) => {
     const positionAttributes = [];
     gltf.scene.traverse((child) => {
@@ -374,6 +381,7 @@ export const createFirework = (options = {}) => {
     u_launchHeight: launchHeight,
     u_bloomDuration: bloomDuration,
     u_launchProgress: 0.0,
+    u_gravityStrength: 1,
   };
 
   const instance = new Cesium.GeometryInstance({ geometry });
@@ -498,12 +506,12 @@ const startFireworkShow = () => {
       createFirework({
         radius: innerRadius,
         matrix,
-        fireworkColor: secondaryColorHex,
+        fireworkColor: primaryColorHex,
       });
       createFirework({
         radius: outerRadius,
         matrix,
-        fireworkColor: primaryColorHex,
+        fireworkColor: secondaryColorHex,
       });
     });
     return;
@@ -843,6 +851,7 @@ if (fireworkTypeCards.length > 0) {
 }
 
 const timelineSelections = [];
+
 const maxTimelineSelections = 9;
 const timelineModeIcons = {
   solo: "bolt",
@@ -851,6 +860,10 @@ const timelineModeIcons = {
 const timelineModeLabels = {
   solo: "単発",
   burst: "連発",
+};
+const timelineModePlaybackConfig = {
+  solo: { shots: 1, intervalMs: 0 },
+  burst: { shots: 3, intervalMs: 250 },
 };
 const defaultModeTab = document.querySelector(".panel-tab.is-active");
 let activeMode = defaultModeTab?.dataset.mode ?? "solo";
@@ -962,6 +975,147 @@ const timelinePlayButton = document.querySelector(".timeline-play");
 const timelinePlaybackDurationMs = 10000;
 let timelineProgressAnimationId;
 let isTimelineProgressPlaying = false;
+const timelineSelectionPlaybackMinimumSlotMs = 250;
+let timelineSelectionPlaybackController;
+
+const getTimelineModePlaybackSettings = (mode) =>
+  (mode && timelineModePlaybackConfig[mode]) ||
+  timelineModePlaybackConfig.solo;
+
+const resolveTimelineSelectionHeight = (selection) => {
+  if (
+    !selection ||
+    typeof selection.launchHeight !== "number" ||
+    Number.isNaN(selection.launchHeight)
+  ) {
+    return params.height;
+  }
+  return selection.launchHeight;
+};
+
+const scheduleTimelinePlaybackAction = (
+  controller,
+  callback,
+  delayMs = 0
+) => {
+  if (!controller) {
+    return;
+  }
+  const timeoutId = window.setTimeout(() => {
+    controller.pendingTimeoutIds.delete(timeoutId);
+    if (!controller.active) {
+      return;
+    }
+    callback();
+  }, Math.max(delayMs, 0));
+  controller.pendingTimeoutIds.add(timeoutId);
+};
+
+const stopTimelineSelectionPlayback = () => {
+  if (!timelineSelectionPlaybackController) {
+    return;
+  }
+  timelineSelectionPlaybackController.active = false;
+  timelineSelectionPlaybackController.pendingTimeoutIds.forEach((timeoutId) => {
+    window.clearTimeout(timeoutId);
+  });
+  timelineSelectionPlaybackController.pendingTimeoutIds.clear();
+  timelineSelectionPlaybackController = undefined;
+};
+
+const getTimelineSelectionColorHex = (selection) => {
+  if (!selection) {
+    return params.fireworkColor;
+  }
+  return (
+    selection.fireworkColorHex ||
+    resolveFireworkHex(selection.fireworkColorKey) ||
+    params.fireworkColor
+  );
+};
+
+const applyTimelineSelectionSettings = (selection) => {
+  if (!selection) {
+    return;
+  }
+  if (selection.fireworkType) {
+    setActiveFireworkCategory(selection.fireworkType);
+  }
+  const colorSelection =
+    selection.fireworkColorKey ?? selection.fireworkColorHex;
+  if (colorSelection) {
+    updateFireworkColors(colorSelection);
+  }
+  const height = resolveTimelineSelectionHeight(selection);
+  if (heightSlider) {
+    heightSlider.value = String(height);
+  }
+  syncHeightValue(height);
+};
+
+const launchTimelineSelectionFirework = (selection, controller) => {
+  if (!selection) {
+    return;
+  }
+  const colorHex = getTimelineSelectionColorHex(selection);
+  const height = resolveTimelineSelectionHeight(selection);
+  const { shots, intervalMs } = getTimelineModePlaybackSettings(
+    selection.mode
+  );
+  for (let i = 0; i < shots; i++) {
+    const delayMs = i * intervalMs;
+    scheduleTimelinePlaybackAction(
+      controller,
+      () => {
+        createFirework({
+          fireworkColor: colorHex,
+          launchHeight: height,
+          matrix: createRandomizedLaunchMatrix(),
+        });
+      },
+      delayMs
+    );
+  }
+};
+
+const startTimelineSelectionPlayback = () => {
+  if (timelineSelections.length === 0) {
+    return false;
+  }
+  stopTimelineSelectionPlayback();
+  const controller = {
+    active: true,
+    pendingTimeoutIds: new Set(),
+  };
+  timelineSelectionPlaybackController = controller;
+  const slotDurationMs = Math.max(
+    timelinePlaybackDurationMs / timelineSelections.length,
+    timelineSelectionPlaybackMinimumSlotMs
+  );
+  const playAtIndex = (index) => {
+    if (!controller.active) {
+      return;
+    }
+    if (index >= timelineSelections.length) {
+      stopTimelineSelectionPlayback();
+      return;
+    }
+    const selection = timelineSelections[index];
+    const card = timelineCards[index];
+    if (card) {
+      setActiveTimelineCard(card);
+    }
+    applyTimelineSelectionSettings(selection);
+    launchTimelineSelectionFirework(selection, controller);
+    scheduleTimelinePlaybackAction(
+      controller,
+      () => playAtIndex(index + 1),
+      slotDurationMs
+    );
+  };
+  playAtIndex(0);
+  return true;
+};
 
 const parseRangeValue = (value, fallback) => {
   const numericValue = Number(value);
@@ -1012,6 +1166,7 @@ const stopTimelineProgressAnimation = ({ reset = false } = {}) => {
     cancelAnimationFrame(timelineProgressAnimationId);
     timelineProgressAnimationId = undefined;
   }
+  stopTimelineSelectionPlayback();
   if (reset) {
     resetTimelineProgress();
   }
@@ -1062,6 +1217,9 @@ if (timelinePlayButton && timelineProgressInput) {
       return;
     }
     startTimelineProgressAnimation();
+    if (timelineSelections.length > 0) {
+      startTimelineSelectionPlayback();
+    }
   });
 }
 
