@@ -137,6 +137,14 @@ body {
   gap: 12px;
 }
 
+.panel-header__titles {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
 .panel-label {
   margin: 0;
   font-size: 0.75rem;
@@ -389,6 +397,9 @@ body {
 }
 .firework-color-swatch[data-firework-color="white"] {
   background: #ecf1ff;
+}
+.firework-color-swatch[data-firework-color="yellow"] {
+  background: #fdc322;
 }
 
 .panel-slider {
