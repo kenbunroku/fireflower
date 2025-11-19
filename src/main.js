@@ -211,7 +211,7 @@ const fireworkFragmentShaderSource = fs;
 let modelPositions = [];
 
 gltfLoader.load(
-  "./models.glb",
+  "./heart.glb",
   (gltf) => {
     // Positions
     const positions = gltf.scene.children.map(
@@ -993,9 +993,18 @@ const startTimelineProgressAnimation = () => {
   if (!timelineProgressInput) {
     return;
   }
-  stopTimelineProgressAnimation({ reset: true });
-  const { min, span } = getTimelineProgressBounds(timelineProgressInput);
-  const animationStart = performance.now();
+  const { min, max, span } = getTimelineProgressBounds(timelineProgressInput);
+  const currentValue = parseRangeValue(timelineProgressInput.value, min);
+  let clampedStartValue = Math.max(min, Math.min(max, currentValue));
+  if (clampedStartValue >= max) {
+    clampedStartValue = min;
+    timelineProgressInput.value = String(min);
+    timelineProgressInput.style.removeProperty("background");
+  }
+  const startOffsetMs =
+    ((clampedStartValue - min) / span) * timelinePlaybackDurationMs;
+  stopTimelineProgressAnimation();
+  const animationStart = performance.now() - startOffsetMs;
   isTimelineProgressPlaying = true;
   setTimelinePlayButtonState(true);
 
