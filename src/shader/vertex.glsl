@@ -10,6 +10,7 @@ uniform float u_radius;
 uniform float u_launchHeight;
 uniform float u_launchProgress;
 uniform float u_bloomDuration;
+uniform float u_gravityStrength;
 
 float easingOutQuint(float t) {
   return 1.0 - pow(1.0 - t, 5.0);
@@ -23,7 +24,7 @@ void main() {
 
   float d1 = easingOutQuint(t / u_bloomDuration);
   float grav = 9.8;
-  vec3 gravP = vec3(0., 0., -1.) * (t * t * grav) * 0.5;
+  vec3 gravP = vec3(0., 0., -1.) * (t * t * grav) * 0.5 * u_gravityStrength;
   float launchProgress = clamp(u_launchProgress, 0.0, 1.0);
   float launchOffset = u_launchHeight * launchProgress;
   vec3 newP = (p.xyz + dir * d1 * u_radius) + gravP;
