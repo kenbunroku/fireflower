@@ -199,8 +199,7 @@ export default class FireworkManager {
     });
   }
 
-  animate(timestamp) {
-    const fireworkArray = this.fireworks;
+  animate(fireworkArray, timestamp) {
     fireworkArray.forEach((firework) => {
       if (!firework.startTime) {
         firework.startTime = timestamp;
@@ -219,7 +218,7 @@ export default class FireworkManager {
       const explosionTime = Math.max(elapsedSeconds - launchDuration, 0.0);
       uniforms.u_time = explosionTime;
     });
-    requestAnimationFrame((ts) => this.animate(ts));
+    requestAnimationFrame((ts) => this.animate(fireworkArray, ts));
   }
 
   launchFireworkSequence(options = {}, fireworkFactory) {
