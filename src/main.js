@@ -577,6 +577,8 @@ function updateFireworkColors(colorKeyOrHex) {
   }
   params.fireworkColor = colorHex;
 
+  console.log(fireworks);
+
   fireworks.forEach((firework) => {
     setPointColorFromHex(colorHex, firework.appearance);
   });
@@ -1022,28 +1024,10 @@ const setInitialFireworksView = () => {
 setInitialFireworksView();
 
 function animate(timestamp) {
-  fireworks.forEach((firework) => {
-    if (!firework.startTime) {
-      firework.startTime = timestamp;
-    }
-    const uniforms = firework.appearance?.uniforms;
-    if (!uniforms) {
-      return;
-    }
-    const elapsedSeconds = (timestamp - firework.startTime) * 0.001;
-    const launchDuration = Math.max(
-      uniforms.u_duration || params.launchDuration,
-      1e-6
-    );
-    const launchProgress = Math.min(elapsedSeconds / launchDuration, 1.0);
-    uniforms.u_launchProgress = launchProgress;
-    const explosionTime = Math.max(elapsedSeconds - launchDuration, 0.0);
-    uniforms.u_time = explosionTime;
-  });
-  requestAnimationFrame(animate);
+  fireworkManager.animate(timestamp);
 }
 
-requestAnimationFrame(animate);
+animate();
 
 const createDebugPane = () => {
   pane

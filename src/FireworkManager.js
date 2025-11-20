@@ -54,7 +54,7 @@ export default class FireworkManager {
       fragmentShaderSource: this.fragmentShaderSource,
       materialCacheKey: "simple-points",
       renderState: {
-        depthMask: false,
+        depthMask: true,
         blending: Cesium.BlendingState.ADDITIVE_BLEND,
       },
     });
@@ -199,6 +199,29 @@ export default class FireworkManager {
     });
   }
 
+  animate(timestamp) {
+    const fireworkArray = this.fireworks;
+    fireworkArray.forEach((firework) => {
+      if (!firework.startTime) {
+        firework.startTime = timestamp;
+      }
+      const uniforms = firework.appearance?.uniforms;
+      if (!uniforms) {
+        return;
+      }
+      const elapsedSeconds = (timestamp - firework.startTime) * 0.001;
+      const launchDuration = Math.max(
+        uniforms.u_duration || params.launchDuration,
+        1e-6
+      );
+      const launchProgress = Math.min(elapsedSeconds / launchDuration, 1.0);
+      uniforms.u_launchProgress = launchProgress;
+      const explosionTime = Math.max(elapsedSeconds - launchDuration, 0.0);
+      uniforms.u_time = explosionTime;
+    });
+    requestAnimationFrame((ts) => this.animate(ts));
+  }
+
   launchFireworkSequence(options = {}, fireworkFactory) {
     const durationSeconds = options.duration ?? this.params.fireworkDuration;
     const intervalSeconds = options.interval ?? this.params.interval;
@@ -246,7 +269,7 @@ export default class FireworkManager {
       );
     };
 
-    this.launchSequences.add(sequence);
+    // this.launchSequences.add(sequence);
     launchOnce();
     return () => this.stopLaunchSequence(sequence);
   }
