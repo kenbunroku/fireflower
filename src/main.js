@@ -33,9 +33,9 @@ const params = {
   radius: 90,
   fireworkColor: "#ffd256",
   launchDuration: 2.0,
-  bloomDuration: 2,
-  fireworkDuration: 10.0,
-  times: 50,
+  bloomDuration: 2.0,
+  fireworkDuration: 2.0,
+  times: 30,
   gravityStrength: 1,
   buildingColor: "#5fd4ff",
   buildingOpacity: 0.7,
@@ -49,18 +49,42 @@ const category = {
   kiku: {
     numberOfParticles: 400,
     pointSize: 4.0,
+    radius: 90,
     bloomDuration: 2,
-    times: 50,
-    height: 200,
+    times: 30,
     gravityStrength: 1,
   },
-  shiyu: {
+  botan: {
     numberOfParticles: 400,
     pointSize: 4.0,
+    radius: 90,
     bloomDuration: 2,
-    times: 50,
-    height: 200,
+    times: 10,
     gravityStrength: 1,
+  },
+  meshibe: {
+    numberOfParticles: 400,
+    pointSize: 4.0,
+    radius: 90,
+    bloomDuration: 3,
+    times: 100,
+    gravityStrength: 1,
+  },
+  kanmukiku: {
+    numberOfParticles: 400,
+    pointSize: 4.0,
+    radius: 90,
+    bloomDuration: 3,
+    times: 100,
+    gravityStrength: 1,
+  },
+  poka: {
+    numberOfParticles: 400,
+    pointSize: 4.0,
+    radius: 50,
+    bloomDuration: 3,
+    times: 100,
+    gravityStrength: 4,
   },
 };
 
@@ -87,7 +111,7 @@ const fireworkColorPresets = {
   cream: { hex: "#ffe0af", secondary: "#ff6c1d" },
   white: { hex: "#ecf1ff", secondary: "#5bcf21" },
 };
-const defaultFireworkColorKey = "cream";
+const defaultFireworkColorKey = "hotPink";
 
 const setup = () => {
   setupPlateauAssets();
@@ -577,8 +601,6 @@ function updateFireworkColors(colorKeyOrHex) {
   }
   params.fireworkColor = colorHex;
 
-  console.log(fireworks);
-
   fireworks.forEach((firework) => {
     setPointColorFromHex(colorHex, firework.appearance);
   });
@@ -711,9 +733,9 @@ const registerTimelineCard = (card) => {
 };
 const addTimelineCard = ({
   fireworkType,
-  fireworkColorKey,
+  fireworkColor,
   launchHeight,
-  fireworkColorHex,
+  fireworkColorKey,
   mode,
 }) => {
   if (!timelineCarousel) {
@@ -733,11 +755,11 @@ const addTimelineCard = ({
   meta.className = "timeline-card__meta";
   const colorLabel = fireworkColorPresets[fireworkColorKey]
     ? fireworkColorKey
-    : fireworkColorHex?.toUpperCase() || "CUSTOM";
+    : fireworkColor?.toUpperCase() || "CUSTOM";
   const colorIndicator = document.createElement("span");
   colorIndicator.className = "timeline-card__color";
   colorIndicator.style.backgroundColor =
-    fireworkColorHex || fireworkColorPresets[fireworkColorKey]?.hex || "#fff";
+    fireworkColor || fireworkColorPresets[fireworkColorKey]?.hex || "#fff";
   const modeLabel =
     (mode && timelineModeLabels[mode]) || timelineModeLabels.solo;
   const modeIcon = (mode && timelineModeIcons[mode]) || timelineModeIcons.solo;
@@ -865,6 +887,7 @@ timelinePlayButton.addEventListener("click", () => {
     stopTimelineProgressAnimation();
     return;
   }
+
   startTimelineProgressAnimation();
   startFireworkShow();
 });
@@ -922,17 +945,26 @@ if (addFireworkButton) {
     if (timelineSelections.length >= maxTimelineSelections) {
       return;
     }
+
     const fireworkColorHex =
       resolveFireworkHex(activeFireworkColorKey) ?? params.fireworkColor;
+    const secondaryColorHex = resolveSecondaryPresetKey(activeFireworkColorKey);
+    const launchHeight = Number(heightSlider?.value);
+
     const selection = {
       fireworkType: activeFireworkCategoryKey,
+      fireworkColor: fireworkColorHex,
       fireworkColorKey: activeFireworkColorKey,
-      fireworkColorHex,
-      launchHeight: params.height,
+      secondary:
+        activeFireworkCategoryKey == "botan" ? secondaryColorHex : undefined,
+      launchHeight: launchHeight,
+      times: category[activeFireworkCategoryKey].times,
+      gravityStrength: category[activeFireworkCategoryKey].gravityStrength,
       mode: activeMode,
-      createdAt: Date.now(),
     };
     timelineSelections.push(selection);
+    console.log(timelineSelections);
+
     updateTimelinePanelVisibility();
     addTimelineCard(selection);
     updateAddFireworkButtonState();
@@ -1024,7 +1056,7 @@ const setInitialFireworksView = () => {
 setInitialFireworksView();
 
 function animate(timestamp) {
-  fireworkManager.animate(timestamp);
+  fireworkManager.animate(fireworks, timestamp);
 }
 
 animate();
