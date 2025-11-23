@@ -16,6 +16,41 @@ body {
   background: #01030a;
 }
 
+button {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+[popover][data-popover-type="sidebar"] {
+  position: fixed;
+  top: 0;
+  left: 0;
+  margin-right: 0;
+  height: 100%;
+  margin-left: auto;
+  padding: 24px;
+  backdrop-filter: blur(26px);
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  color: white;
+  box-sizing: border-box;
+  transition: transform 0.3s ease, display 0.4s allow-discrete;
+  transform: translateX(100%);
+}
+
+[popover][data-popover-type="sidebar"]:popover-open {
+  transform: translateX(0);
+  transition: transform 0.3s ease;
+
+  @starting-style {
+    transform: translateX(100%);
+  }
+}
+
 #cesiumContainer {
   position: absolute;
   inset: 0;
@@ -35,66 +70,103 @@ body {
   z-index: 5;
 }
 
-.instruction-card {
+.tooltip-container {
+  position: relative;
+  display: inline-block;
+}
+
+/*
+  ホバー、フォーカス、アクティブ時にツールチップを表示する
+*/
+.tooltip-container:is(:hover, :focus-visible, :focus-within, :active)
+  > .tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
+.tooltip {
+  --_bg: rgba(255, 255, 255, 0.2);
+  --_color: #fff;
+  --_triangle-size: 5px;
+  --_gap: 3px;
+
   position: absolute;
-  bottom: 250px;
-  width: fit-content;
-  display: flex;
-  gap: 16px;
-  padding: 16px 20px;
+  z-index: 1;
+  display: block;
+
+  /* ツールチップのみため */
+  width: max-content;
+  max-width: 250px;
+  padding: 10px;
+  background-color: var(--_bg);
+  color: var(--_color);
+  text-align: left;
   border-radius: 8px;
-  color: #000000;
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+  font-size: 12px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+
+  /* 表示・非表示の指定 */
+  visibility: hidden;
+  opacity: 0;
+}
+
+.tooltip.-bottom {
+  top: calc(100% + var(--_triangle-size) + var(--_gap));
+  left: 50%;
+  translate: -50% var(--_y, 0);
+}
+
+.tooltip::after {
+  position: absolute;
+  content: "";
+  display: block;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+}
+
+.tooltip.-bottom::after {
+  bottom: 100%;
+  left: 0;
+  height: calc(var(--_triangle-size) + var(--_gap));
+}
+
+.tooltip__row {
+  display: flex;
+}
+
+.tooltip__text {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.control-panel-container {
+  display: flex;
   pointer-events: auto;
 }
 
-.instruction-card.is-hidden {
-  display: none;
-}
-
-.instruction-card__header {
+.control-panel__buttons {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-bottom: 8px;
+  gap: 12px;
+  pointer-events: auto;
+  position: relative;
+  z-index: 0;
 }
 
-.instruction-card__icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 16px;
-  background: radial-gradient(circle at 30% 20%, #ffe0af, #ff5f8f);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.instruction-card__row {
-  display: flex;
-}
-
-.instruction-card__close-button {
+.open__button {
+  width: fit-content;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: rgba(10, 12, 21, 0.85);
+  color: #fff;
   font-size: 0.85rem;
-  letter-spacing: 0.08em;
-  border: none;
-  background: none;
-  padding: 0;
   cursor: pointer;
-}
-
-.instruction-card__close-button .material-icons-outlined {
-  font-size: 1.5em;
-  vertical-align: middle;
-}
-
-.instruction-card__text {
-  margin: 0;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
 }
 
 .control-panel {
@@ -113,6 +185,16 @@ body {
   flex-direction: column;
   gap: 24px;
   box-sizing: border-box;
+}
+
+#infoPopover {
+  width: fit-content;
+  padding: 6px 12px;
+  background-color: #333;
+  color: white;
+  border-radius: 4px;
+  font-size: 14px;
+  bottom: 60px;
 }
 
 .panel-body {
@@ -154,7 +236,7 @@ body {
 }
 
 .panel-title {
-  margin: 4px 0 0;
+  margin: 0;
   font-size: 1.4rem;
   font-weight: 600;
   color: #fff;
@@ -163,6 +245,12 @@ body {
 .panel-header__actions {
   display: flex;
   gap: 8px;
+}
+
+.close__button {
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #fff;
 }
 
 .icon-button {
@@ -647,4 +735,8 @@ body {
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.cesium-viewer-fullscreenContainer {
+  top: 0;
 }
