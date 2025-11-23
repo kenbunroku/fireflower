@@ -6,6 +6,9 @@ import { Pane } from "tweakpane";
 
 import FireworkManager from "./FireworkManager";
 
+Cesium.Ion.defaultAccessToken =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkYTE4NjhhMy01YjM0LTQ0MDYtOThjMi1hNWJlYmI5MWY3YzQiLCJpZCI6MzQ2NzMzLCJpYXQiOjE3NTk0NTA4NDN9.IQ-97lJJ-qTrkTUllzEMiMAIgCVSEb9eQxwIbSJ_zjo";
+
 const isDebugMode = true;
 
 const pane = new Pane();
@@ -88,18 +91,6 @@ const category = {
   },
 };
 
-let viewer, scene;
-let bloom;
-
-const location = {
-  lat: 35.716833,
-  lng: 139.805278,
-  height: 250,
-};
-const modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(
-  Cesium.Cartesian3.fromDegrees(location.lng, location.lat)
-);
-
 const fireworkColorPresets = {
   hotPink: { hex: "#ff4181", secondary: "#fdc322" },
   yellow: { hex: "#fdc322", secondary: "#4483f9" },
@@ -113,13 +104,24 @@ const fireworkColorPresets = {
 };
 const defaultFireworkColorKey = "hotPink";
 
+let viewer, scene;
+let bloom;
+
+const location = {
+  lat: 35.716833,
+  lng: 139.805278,
+  height: 250,
+};
+const modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(
+  Cesium.Cartesian3.fromDegrees(location.lng, location.lat)
+);
+
 const setup = () => {
   setupPlateauAssets();
-};
-
-const setupPlateauAssets = async () => {
   setupBloom();
 };
+
+const setupPlateauAssets = async () => {};
 
 const setupBloom = () => {
   if (!scene || !scene.postProcessStages) {
@@ -150,9 +152,6 @@ const setupBloom = () => {
   bloom.uniforms.stepSize = 1.0;
 };
 
-Cesium.Ion.defaultAccessToken =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkYTE4NjhhMy01YjM0LTQ0MDYtOThjMi1hNWJlYmI5MWY3YzQiLCJpZCI6MzQ2NzMzLCJpYXQiOjE3NTk0NTA4NDN9.IQ-97lJJ-qTrkTUllzEMiMAIgCVSEb9eQxwIbSJ_zjo";
-
 viewer = new Cesium.Viewer("cesiumContainer", {
   terrainProvider: await Cesium.CesiumTerrainProvider.fromIonAssetId(2767062),
   baseLayerPicker: false,
@@ -166,6 +165,7 @@ viewer = new Cesium.Viewer("cesiumContainer", {
   homeButton: false,
   navigationHelpButton: false,
   useBrowserRecommendedResolution: true,
+  geocoder: false,
 });
 
 scene = viewer.scene;
@@ -530,17 +530,6 @@ window.addEventListener("resize", () => {
   threeCamera.updateProjectionMatrix();
 });
 
-const instructionCard = document.querySelector(".instruction-card");
-const instructionCardCloseButton = document.querySelector(
-  ".instruction-card__close-button"
-);
-if (instructionCard && instructionCardCloseButton) {
-  instructionCardCloseButton.addEventListener("click", () => {
-    instructionCard.classList.add("is-hidden");
-    instructionCard.setAttribute("aria-hidden", "true");
-  });
-}
-
 const fireworkColorButtons = document.querySelectorAll(
   ".firework-color-swatch"
 );
@@ -670,6 +659,7 @@ if (fireworkTypeCards.length > 0) {
 }
 
 const timelineSelections = [];
+const timelineSelectedFireworks = [];
 
 const maxTimelineSelections = 9;
 const timelineModeIcons = {
@@ -790,6 +780,75 @@ const timelinePlayButton = document.querySelector(".timeline-play");
 const timelinePlaybackDurationMs = 10000;
 let timelineProgressAnimationId;
 let isTimelineProgressPlaying = false;
+let isTimelineSequenceActive = false;
+let timelineSequenceTimeoutId;
+const activeTimelineBurstStops = new Set();
+
+const stopTimelinePlaybackSequence = () => {
+  if (timelineSequenceTimeoutId) {
+    window.clearTimeout(timelineSequenceTimeoutId);
+    timelineSequenceTimeoutId = undefined;
+  }
+  activeTimelineBurstStops.forEach((stop) => {
+    try {
+      stop();
+    } catch (error) {
+      console.error("Failed to stop burst sequence:", error);
+    }
+  });
+  activeTimelineBurstStops.clear();
+  isTimelineSequenceActive = false;
+};
+
+const triggerTimelineSelection = (selection) => {
+  if (!selection) {
+    return;
+  }
+
+  if (selection.mode === "burst") {
+    const stop = fireworkManager.launchFireworkSequence(selection);
+    if (typeof stop === "function") {
+      activeTimelineBurstStops.add(stop);
+    }
+    return;
+  }
+  fireworkManager.createFirework(selection);
+};
+
+const playTimelineSelectionsSequentially = () => {
+  if (timelineSelections.length === 0) {
+    return;
+  }
+
+  stopTimelinePlaybackSequence();
+  isTimelineSequenceActive = true;
+  const delayMs =
+    timelinePlaybackDurationMs / Math.max(timelineSelections.length, 1);
+
+  const step = (index) => {
+    if (!isTimelineSequenceActive) {
+      return;
+    }
+    const selection = timelineSelections[index];
+    if (!selection) {
+      return;
+    }
+
+    triggerTimelineSelection(selection);
+
+    if (index + 1 >= timelineSelections.length) {
+      isTimelineSequenceActive = false;
+      return;
+    }
+
+    timelineSequenceTimeoutId = window.setTimeout(
+      () => step(index + 1),
+      delayMs
+    );
+  };
+
+  step(0);
+};
 
 const parseRangeValue = (value, fallback) => {
   const numericValue = Number(value);
@@ -840,6 +899,7 @@ const stopTimelineProgressAnimation = ({ reset = false } = {}) => {
     cancelAnimationFrame(timelineProgressAnimationId);
     timelineProgressAnimationId = undefined;
   }
+  stopTimelinePlaybackSequence();
   if (reset) {
     resetTimelineProgress();
   }
@@ -888,8 +948,13 @@ timelinePlayButton.addEventListener("click", () => {
     return;
   }
 
+  if (timelineSelections.length === 0) {
+    return;
+  }
+
   startTimelineProgressAnimation();
-  startFireworkShow();
+
+  playTimelineSelectionsSequentially();
 });
 
 if (timelineProgressInput) {
@@ -952,6 +1017,10 @@ if (addFireworkButton) {
     const launchHeight = Number(heightSlider?.value);
 
     const selection = {
+      numberOfParticles: category[activeFireworkCategoryKey].numberOfParticles,
+      pointSize: category[activeFireworkCategoryKey].pointSize,
+      radius: category[activeFireworkCategoryKey].radius,
+      bloomDuration: category[activeFireworkCategoryKey].bloomDuration,
       fireworkType: activeFireworkCategoryKey,
       fireworkColor: fireworkColorHex,
       fireworkColorKey: activeFireworkColorKey,
@@ -963,7 +1032,6 @@ if (addFireworkButton) {
       mode: activeMode,
     };
     timelineSelections.push(selection);
-    console.log(timelineSelections);
 
     updateTimelinePanelVisibility();
     addTimelineCard(selection);
@@ -1055,8 +1123,8 @@ const setInitialFireworksView = () => {
 };
 setInitialFireworksView();
 
-function animate(timestamp) {
-  fireworkManager.animate(fireworks, timestamp);
+function animate() {
+  fireworkManager.animate(fireworks);
 }
 
 animate();
