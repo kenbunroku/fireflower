@@ -62,8 +62,9 @@ export default class FireworkManager {
 
   createFirework(options = {}) {
     const {
-      numberOfParticles = this.params.numberOfParticles,
-      times = this.params.times,
+      numberOfParticles = options.numberOfParticles ??
+        this.params.numberOfParticles,
+      times = options.times ?? this.params.times,
       pointSize = this.params.pointSize,
       radius = this.params.radius,
       fireworkColor = this.params.fireworkColor,
