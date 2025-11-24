@@ -77,7 +77,7 @@ const category = {
   kiku: {
     numberOfParticles: 400,
     pointSize: 4.0,
-    radius: 90,
+    radius: 800,
     bloomDuration: 2,
     times: 30,
     gravityStrength: 1,
@@ -85,7 +85,7 @@ const category = {
   botan: {
     numberOfParticles: 400,
     pointSize: 4.0,
-    radius: 90,
+    radius: 800,
     bloomDuration: 2,
     times: 10,
     gravityStrength: 1,
@@ -93,7 +93,7 @@ const category = {
   meshibe: {
     numberOfParticles: 400,
     pointSize: 4.0,
-    radius: 90,
+    radius: 800,
     bloomDuration: 3,
     times: 100,
     gravityStrength: 1,
@@ -101,7 +101,7 @@ const category = {
   kanmukiku: {
     numberOfParticles: 400,
     pointSize: 4.0,
-    radius: 90,
+    radius: 800,
     bloomDuration: 3,
     times: 100,
     gravityStrength: 1,
@@ -109,7 +109,7 @@ const category = {
   poka: {
     numberOfParticles: 400,
     pointSize: 4.0,
-    radius: 50,
+    radius: 200,
     bloomDuration: 3,
     times: 100,
     gravityStrength: 4,
@@ -661,17 +661,15 @@ const timelineModeLabels = {
 };
 const defaultModeTab = document.querySelector(".panel-tab.is-active");
 let activeMode = defaultModeTab?.dataset.mode ?? "solo";
-const burstTypeSection = document.querySelector(
-  '[data-section="burst-type"]'
-);
+const burstTypeSection = document.querySelector('[data-section="burst-type"]');
 const burstTypeCards = Array.from(
   document.querySelectorAll(
     '.firework-type-card[data-firework-type="sokuhatsu"], .firework-type-card[data-firework-type="renpatsu"]'
   )
 );
 let activeBurstTypeKey =
-  burstTypeCards.find((card) => card.classList.contains("is-active"))
-    ?.dataset.fireworkType || "sokuhatsu";
+  burstTypeCards.find((card) => card.classList.contains("is-active"))?.dataset
+    .fireworkType || "sokuhatsu";
 const isBurstTypeEnabled = () => activeMode === "burst";
 const setActiveBurstTypeCard = (typeKey) => {
   burstTypeCards.forEach((card) => {
