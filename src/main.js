@@ -21,6 +21,7 @@ const gltfLoader = new GLTFLoader();
 gltfLoader.setDRACOLoader(dracoLoader);
 
 let heartModelPositions = new Float32Array();
+let loveModelPositions = new Float32Array();
 
 gltfLoader.load("./heart.glb", (gltf) => {
   const positionAttributes = [];
@@ -41,6 +42,28 @@ gltfLoader.load("./heart.glb", (gltf) => {
   if (basePositions) {
     heartModelPositions = rotatePositionsAroundX(basePositions, Math.PI / 2);
     category.heart.numberOfParticles = heartModelPositions.length / 3;
+  }
+});
+
+gltfLoader.load("./merryme.glb", (gltf) => {
+  const positionAttributes = [];
+
+  gltf.scene.traverse((child) => {
+    if (!child.isMesh) {
+      return;
+    }
+    const geo = child.geometry.clone();
+    geo.applyMatrix4(child.matrixWorld);
+    const positionAttr = geo.attributes?.position;
+    if (positionAttr?.array) {
+      positionAttributes.push(positionAttr.array);
+    }
+  });
+
+  const basePositions = positionAttributes[0];
+  if (basePositions) {
+    loveModelPositions = rotatePositionsAroundX(basePositions, Math.PI / 2);
+    category.love.numberOfParticles = loveModelPositions.length / 3;
   }
 });
 
@@ -115,6 +138,14 @@ const category = {
     gravityStrength: 4,
   },
   heart: {
+    numberOfParticles: 0,
+    pointSize: 4.0,
+    radius: 50,
+    bloomDuration: 2,
+    times: 1,
+    gravityStrength: 1,
+  },
+  love: {
     numberOfParticles: 0,
     pointSize: 4.0,
     radius: 50,
@@ -828,6 +859,14 @@ const triggerTimelineSelection = (selection) => {
       fireworkManager.createFirework({
         ...selection,
         modelPositions: heartModelPositions,
+        matrix: matrix,
+      })
+    );
+  } else if (selection.fireworkType == "love") {
+    timelineSelectedFireworks.push(
+      fireworkManager.createFirework({
+        ...selection,
+        modelPositions: loveModelPositions,
         matrix: matrix,
       })
     );
