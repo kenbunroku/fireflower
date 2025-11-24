@@ -2,16 +2,7 @@ import * as Cesium from "cesium";
 import vs from "./shader/vertex.glsl";
 import fs from "./shader/fragment.glsl";
 
-const randomPointOnSphere = (radius = 1) => {
-  const u = Math.random();
-  const v = Math.random();
-  const theta = 2 * Math.PI * u;
-  const phi = Math.acos(2 * v - 1);
-  const x = radius * Math.sin(phi) * Math.cos(theta);
-  const y = radius * Math.sin(phi) * Math.sin(theta);
-  const z = radius * Math.cos(phi);
-  return { x, y, z };
-};
+import { randomPointOnSphere } from "./util.js";
 
 export default class FireworkManager {
   constructor({
