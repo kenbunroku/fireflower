@@ -366,7 +366,6 @@ const highlightState = {
 const highlightColor = Cesium.Color.fromCssColorString("#f5e642");
 const screenSpaceHandler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
 const resetCameraButton = document.getElementById("resetCameraButton");
-const startButton = document.getElementById("startExperienceButton");
 
 function setResetCameraButtonVisible(isVisible) {
   if (!resetCameraButton) {
@@ -1023,39 +1022,39 @@ const updateAddFireworkButtonState = () => {
     timelineSelections.length >= maxTimelineSelections;
 };
 
-if (addFireworkButton) {
-  addFireworkButton.addEventListener("click", () => {
-    if (timelineSelections.length >= maxTimelineSelections) {
-      return;
-    }
+addFireworkButton.addEventListener("click", () => {
+  if (timelineSelections.length >= maxTimelineSelections) {
+    return;
+  }
 
-    const fireworkColorHex =
-      resolveFireworkHex(activeFireworkColorKey) ?? params.fireworkColor;
-    const secondaryColorHex = resolveSecondaryPresetKey(activeFireworkColorKey);
-    const launchHeight = Number(heightSlider?.value);
+  const fireworkColorHex =
+    resolveFireworkHex(activeFireworkColorKey) ?? params.fireworkColor;
+  const secondaryColorHex = resolveSecondaryPresetKey(activeFireworkColorKey);
+  const launchHeight = Number(heightSlider?.value);
 
-    const selection = {
-      numberOfParticles: category[activeFireworkCategoryKey].numberOfParticles,
-      pointSize: category[activeFireworkCategoryKey].pointSize,
-      radius: category[activeFireworkCategoryKey].radius,
-      bloomDuration: category[activeFireworkCategoryKey].bloomDuration,
-      fireworkType: activeFireworkCategoryKey,
-      fireworkColor: fireworkColorHex,
-      fireworkColorKey: activeFireworkColorKey,
-      secondary:
-        activeFireworkCategoryKey == "botan" ? secondaryColorHex : undefined,
-      launchHeight: launchHeight,
-      times: category[activeFireworkCategoryKey].times,
-      gravityStrength: category[activeFireworkCategoryKey].gravityStrength,
-      mode: activeMode,
-    };
-    timelineSelections.push(selection);
+  const selection = {
+    numberOfParticles: category[activeFireworkCategoryKey].numberOfParticles,
+    pointSize: category[activeFireworkCategoryKey].pointSize,
+    radius: category[activeFireworkCategoryKey].radius,
+    bloomDuration: category[activeFireworkCategoryKey].bloomDuration,
+    fireworkType: activeFireworkCategoryKey,
+    fireworkColor: fireworkColorHex,
+    fireworkColorKey: activeFireworkColorKey,
+    secondary:
+      activeFireworkCategoryKey == "botan" || "meshibe"
+        ? secondaryColorHex
+        : undefined,
+    launchHeight: launchHeight,
+    times: category[activeFireworkCategoryKey].times,
+    gravityStrength: category[activeFireworkCategoryKey].gravityStrength,
+    mode: activeMode,
+  };
+  timelineSelections.push(selection);
 
-    updateTimelinePanelVisibility();
-    addTimelineCard(selection);
-    updateAddFireworkButtonState();
-  });
-}
+  updateTimelinePanelVisibility();
+  addTimelineCard(selection);
+  updateAddFireworkButtonState();
+});
 
 const modeTabs = document.querySelectorAll(".panel-tab");
 if (modeTabs.length > 0) {
@@ -1104,17 +1103,6 @@ function flyToDefaultFireworksView(duration = 2.0) {
       },
     }
   );
-}
-
-if (startButton) {
-  startButton.addEventListener("click", () => {
-    startButton.style.display = "none";
-    setResetCameraButtonVisible(false);
-    flyToDefaultFireworksView();
-    startFireworkShow();
-  });
-} else {
-  startFireworkShow();
 }
 
 if (resetCameraButton) {
