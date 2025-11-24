@@ -5,6 +5,7 @@ import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { Pane } from "tweakpane";
 
 import FireworkManager from "./FireworkManager";
+import { rotatePositionsAroundX } from "./util.js";
 
 Cesium.Ion.defaultAccessToken =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkYTE4NjhhMy01YjM0LTQ0MDYtOThjMi1hNWJlYmI5MWY3YzQiLCJpZCI6MzQ2NzMzLCJpYXQiOjE3NTk0NTA4NDN9.IQ-97lJJ-qTrkTUllzEMiMAIgCVSEb9eQxwIbSJ_zjo";
@@ -19,6 +20,30 @@ dracoLoader.setDecoderPath("./static/draco/");
 const gltfLoader = new GLTFLoader();
 gltfLoader.setDRACOLoader(dracoLoader);
 
+let heartModelPositions = new Float32Array();
+
+gltfLoader.load("./heart.glb", (gltf) => {
+  const positionAttributes = [];
+
+  gltf.scene.traverse((child) => {
+    if (!child.isMesh) {
+      return;
+    }
+    const geo = child.geometry.clone();
+    geo.applyMatrix4(child.matrixWorld);
+    const positionAttr = geo.attributes?.position;
+    if (positionAttr?.array) {
+      positionAttributes.push(positionAttr.array);
+    }
+  });
+
+  const basePositions = positionAttributes[0];
+  if (basePositions) {
+    heartModelPositions = rotatePositionsAroundX(basePositions, Math.PI / 2);
+    category.heart.numberOfParticles = heartModelPositions.length / 3;
+  }
+});
+
 const fireWorkCategory = {
   kiku: "菊",
   botan: "牡丹",
@@ -30,10 +55,10 @@ const fireWorkCategory = {
 };
 
 const params = {
-  category: fireWorkCategory.kiku,
+  category: fireWorkCategory.heart,
   numberOfParticles: 400,
   pointSize: 4.0,
-  radius: 90,
+  radius: 800,
   fireworkColor: "#ffd256",
   launchDuration: 2.0,
   bloomDuration: 2.0,
@@ -88,6 +113,14 @@ const category = {
     bloomDuration: 3,
     times: 100,
     gravityStrength: 4,
+  },
+  heart: {
+    numberOfParticles: 0,
+    pointSize: 4.0,
+    radius: 50,
+    bloomDuration: 2,
+    times: 1,
+    gravityStrength: 1,
   },
 };
 
@@ -249,8 +282,6 @@ try {
 setup();
 
 // Particle system setup using point primitives
-let heartModelPositions = new Float32Array();
-
 const fireworkManager = new FireworkManager({
   scene,
   params,
@@ -259,48 +290,6 @@ const fireworkManager = new FireworkManager({
   modelPositions: heartModelPositions,
 });
 const fireworks = fireworkManager.getFireworks();
-
-gltfLoader.load(
-  "./heart.glb",
-  (gltf) => {
-    const positionAttributes = [];
-    gltf.scene.traverse((child) => {
-      if (!child.isMesh) {
-        return;
-      }
-      const positionAttr = child.geometry?.attributes?.position;
-      if (positionAttr?.array) {
-        positionAttributes.push(positionAttr.array);
-      }
-    });
-
-    if (positionAttributes.length === 0) {
-      console.warn("heart.glb does not contain mesh positions.");
-      heartModelPositions = new Float32Array();
-      fireworkManager.setModelPositions(heartModelPositions);
-      return;
-    }
-
-    const totalLength = positionAttributes.reduce(
-      (sum, array) => sum + array.length,
-      0
-    );
-    const mergedPositions = new Float32Array(totalLength);
-    let offset = 0;
-    for (const array of positionAttributes) {
-      mergedPositions.set(array, offset);
-      offset += array.length;
-    }
-    heartModelPositions = mergedPositions;
-    fireworkManager.setModelPositions(heartModelPositions);
-  },
-  undefined,
-  (err) => {
-    console.error("GLTF load error:", err);
-    heartModelPositions = new Float32Array();
-    fireworkManager.setModelPositions(heartModelPositions);
-  }
-);
 
 const startFireworkShow = () => {
   if (!fireworkManager) {
@@ -621,7 +610,7 @@ const resolveCategoryKeyFromValue = (value) => {
 
 const fireworkTypeCards = document.querySelectorAll(".firework-type-card");
 let activeFireworkCategoryKey =
-  resolveCategoryKeyFromValue(params.category) ?? "kiku";
+  resolveCategoryKeyFromValue(params.category) ?? "heart";
 
 const setActiveFireworkTypeCard = (categoryKey) => {
   fireworkTypeCards.forEach((card) => {
@@ -826,6 +815,11 @@ const triggerTimelineSelection = (selection) => {
       ...selection,
       radius: outerRadius,
       fireworkColor: secondaryColorHex,
+    });
+  } else if (selection.fireworkType == "heart") {
+    fireworkManager.createFirework({
+      ...selection,
+      modelPositions: heartModelPositions,
     });
   } else {
     fireworkManager.createFirework(selection);
