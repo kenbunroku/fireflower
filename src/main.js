@@ -55,7 +55,7 @@ const fireWorkCategory = {
 };
 
 const params = {
-  category: fireWorkCategory.heart,
+  category: fireWorkCategory.kiku,
   numberOfParticles: 400,
   pointSize: 4.0,
   radius: 800,
@@ -608,12 +608,13 @@ const resolveCategoryKeyFromValue = (value) => {
   return entry?.[0];
 };
 
-const fireworkTypeCards = document.querySelectorAll(".firework-type-card");
-let activeFireworkCategoryKey =
-  resolveCategoryKeyFromValue(params.category) ?? "heart";
+const fireworkCategoryCards = Array.from(
+  document.querySelectorAll(".firework-type-card")
+).filter((card) => fireWorkCategory[card.dataset.fireworkType]);
+let activeFireworkCategoryKey = resolveCategoryKeyFromValue(params.category);
 
 const setActiveFireworkTypeCard = (categoryKey) => {
-  fireworkTypeCards.forEach((card) => {
+  fireworkCategoryCards.forEach((card) => {
     const key = card.dataset.fireworkType;
     card.classList.toggle("is-active", key === categoryKey);
   });
@@ -633,8 +634,8 @@ const setActiveFireworkCategory = (categoryKey) => {
   setActiveFireworkTypeCard(categoryKey);
 };
 
-if (fireworkTypeCards.length > 0) {
-  fireworkTypeCards.forEach((card) => {
+if (fireworkCategoryCards.length > 0) {
+  fireworkCategoryCards.forEach((card) => {
     card.addEventListener("click", () => {
       const typeKey = card.dataset.fireworkType;
       if (!typeKey || typeKey === activeFireworkCategoryKey) {
@@ -660,6 +661,53 @@ const timelineModeLabels = {
 };
 const defaultModeTab = document.querySelector(".panel-tab.is-active");
 let activeMode = defaultModeTab?.dataset.mode ?? "solo";
+const burstTypeSection = document.querySelector(
+  '[data-section="burst-type"]'
+);
+const burstTypeCards = Array.from(
+  document.querySelectorAll(
+    '.firework-type-card[data-firework-type="sokuhatsu"], .firework-type-card[data-firework-type="renpatsu"]'
+  )
+);
+let activeBurstTypeKey =
+  burstTypeCards.find((card) => card.classList.contains("is-active"))
+    ?.dataset.fireworkType || "sokuhatsu";
+const isBurstTypeEnabled = () => activeMode === "burst";
+const setActiveBurstTypeCard = (typeKey) => {
+  burstTypeCards.forEach((card) => {
+    card.classList.toggle("is-active", card.dataset.fireworkType === typeKey);
+  });
+};
+const updateBurstTypeAvailability = () => {
+  const enabled = isBurstTypeEnabled();
+  burstTypeCards.forEach((card) => {
+    card.classList.toggle("is-disabled", !enabled);
+    card.setAttribute("aria-disabled", String(!enabled));
+  });
+  if (burstTypeSection) {
+    burstTypeSection.classList.toggle("is-hidden", !enabled);
+    burstTypeSection.setAttribute("aria-hidden", String(!enabled));
+  }
+  if (enabled) {
+    setActiveBurstTypeCard(activeBurstTypeKey);
+  }
+};
+if (burstTypeCards.length > 0) {
+  burstTypeCards.forEach((card) => {
+    card.addEventListener("click", () => {
+      if (!isBurstTypeEnabled()) {
+        return;
+      }
+      const typeKey = card.dataset.fireworkType;
+      if (!typeKey || typeKey === activeBurstTypeKey) {
+        return;
+      }
+      activeBurstTypeKey = typeKey;
+      setActiveBurstTypeCard(typeKey);
+    });
+  });
+}
+updateBurstTypeAvailability();
 const timelinePanel = document.querySelector(".timeline-panel");
 const timelineCarousel = document.getElementById("timelineCarousel");
 const updateTimelinePanelVisibility = () => {
@@ -1062,6 +1110,7 @@ if (modeTabs.length > 0) {
       if (tab.dataset.mode) {
         activeMode = tab.dataset.mode;
       }
+      updateBurstTypeAvailability();
     });
   });
 }

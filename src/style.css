@@ -315,6 +315,10 @@ button {
   color: rgba(255, 255, 255, 0.6);
 }
 
+.panel-section.is-hidden {
+  display: none;
+}
+
 .firework-type-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -421,6 +425,11 @@ button {
 .firework-type-card.is-active .firework-type-card__icon {
   opacity: 1;
   transform: scale(1);
+}
+
+.firework-type-card.is-disabled {
+  opacity: 0.45;
+  pointer-events: none;
 }
 
 .firework-type-card__label {
