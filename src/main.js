@@ -291,42 +291,6 @@ const fireworkManager = new FireworkManager({
 });
 const fireworks = fireworkManager.getFireworks();
 
-const startFireworkShow = () => {
-  if (!fireworkManager) {
-    return;
-  }
-
-  fireworkManager.stopAllLaunchSequences();
-
-  const category = params.category;
-
-  if (category === fireWorkCategory.botan) {
-    const innerRadius = params.radius * 0.6;
-    const outerRadius = params.radius * 1.2;
-    const primaryPresetKey = activeFireworkColorKey ?? defaultFireworkColorKey;
-    const secondaryPresetKey = resolveSecondaryPresetKey(primaryPresetKey);
-    const primaryColorHex =
-      resolveFireworkHex(primaryPresetKey) ?? params.fireworkColor;
-    const secondaryColorHex =
-      resolveFireworkHex(secondaryPresetKey) ?? params.fireworkColor;
-    fireworkManager.launchFireworkSequence({}, (matrix) => {
-      fireworkManager.createFirework({
-        radius: innerRadius,
-        matrix,
-        fireworkColor: primaryColorHex,
-      });
-      fireworkManager.createFirework({
-        radius: outerRadius,
-        matrix,
-        fireworkColor: secondaryColorHex,
-      });
-    });
-    return;
-  }
-
-  fireworkManager.launchFireworkSequence();
-};
-
 const getPrimaryAppearance = () => fireworkManager.getPrimaryAppearance();
 
 const setPointColorFromHex = (
@@ -745,9 +709,6 @@ const handleTimelineCardClick = (card) => {
       syncHeightValue(numericHeight);
     }
   }
-  if (shouldRestart) {
-    startFireworkShow();
-  }
 };
 const registerTimelineCard = (card) => {
   if (!card) {
@@ -845,26 +806,35 @@ const triggerTimelineSelection = (selection) => {
     const primaryColorHex = selection.fireworkColor;
     const secondaryColorHex = selection.secondary;
 
-    fireworkManager.createFirework({
-      ...selection,
-      radius: innerRadius,
-      fireworkColor: primaryColorHex,
-      matrix: matrix,
-    });
-    fireworkManager.createFirework({
-      ...selection,
-      radius: outerRadius,
-      fireworkColor: secondaryColorHex,
-      matrix: matrix,
-    });
+    timelineSelectedFireworks.push(
+      fireworkManager.createFirework({
+        ...selection,
+        radius: innerRadius,
+        fireworkColor: primaryColorHex,
+        matrix: matrix,
+      })
+    );
+
+    timelineSelectedFireworks.push(
+      fireworkManager.createFirework({
+        ...selection,
+        radius: outerRadius,
+        fireworkColor: secondaryColorHex,
+        matrix: matrix,
+      })
+    );
   } else if (selection.fireworkType == "heart") {
-    fireworkManager.createFirework({
-      ...selection,
-      modelPositions: heartModelPositions,
-      matrix: matrix,
-    });
+    timelineSelectedFireworks.push(
+      fireworkManager.createFirework({
+        ...selection,
+        modelPositions: heartModelPositions,
+        matrix: matrix,
+      })
+    );
   } else {
-    fireworkManager.createFirework({ ...selection, matrix: matrix });
+    timelineSelectedFireworks.push(
+      fireworkManager.createFirework({ ...selection, matrix: matrix })
+    );
   }
 };
 
@@ -1210,18 +1180,15 @@ setInitialFireworksView();
 
 function animate() {
   fireworkManager.animate(fireworks);
+  fireworkManager.animate(timelineSelectedFireworks);
 }
 
 animate();
 
 const createDebugPane = () => {
-  pane
-    .addBinding(params, "category", {
-      options: fireWorkCategory,
-    })
-    .on("change", () => {
-      startFireworkShow();
-    });
+  pane.addBinding(params, "category", {
+    options: fireWorkCategory,
+  });
 
   pane
     .addBinding(params, "numberOfParticles", {
@@ -1285,25 +1252,16 @@ const createDebugPane = () => {
       });
     });
 
-  pane
-    .addBinding(params, "fireworkDuration", {
-      min: 1,
-      max: 60,
-    })
-    .on("change", () => {
-      startFireworkShow();
-    });
+  pane.addBinding(params, "fireworkDuration", {
+    min: 1,
+    max: 60,
+  });
 
-  pane
-    .addBinding(params, "times", {
-      min: 1,
-      max: 100,
-      step: 1,
-    })
-    .on("change", (event) => {
-      // 再読み込みして反映させる
-      window.location.reload();
-    });
+  pane.addBinding(params, "times", {
+    min: 1,
+    max: 100,
+    step: 1,
+  });
 
   pane.addBinding(params, "buildingColor").on("change", (event) => {
     const colorHex = event.value;

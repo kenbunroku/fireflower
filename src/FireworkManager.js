@@ -171,7 +171,7 @@ export default class FireworkManager {
       appearance,
       startTime: undefined,
     };
-    this.fireworks.push(firework);
+    // this.fireworks.push(firework);
     return firework;
   }
 
@@ -282,57 +282,5 @@ export default class FireworkManager {
       uniforms.u_time = explosionTime;
     });
     requestAnimationFrame((ts) => this.animate(fireworkArray, ts));
-  }
-
-  launchFireworkSequence(options = {}, fireworkFactory) {
-    const durationSeconds = options.duration ?? this.params.fireworkDuration;
-    const intervalSeconds = options.interval ?? this.params.interval;
-    const baseMatrix = options.matrix || this.modelMatrix;
-    const spread = options.spread ?? this.params.launchOffsetRangeMeters;
-    const now = () =>
-      typeof performance !== "undefined" ? performance.now() : Date.now();
-    const startTime = now();
-    const sequence = {
-      active: true,
-      timeoutId: undefined,
-    };
-
-    const spawnFirework = (matrix) => {
-      if (typeof fireworkFactory === "function") {
-        fireworkFactory(matrix);
-      } else {
-        this.createFirework({
-          ...options,
-          fireworkColor: options.fireworkColor ?? this.params.fireworkColor,
-          matrix,
-        });
-      }
-    };
-
-    const launchOnce = () => {
-      if (!sequence.active) {
-        return;
-      }
-      const elapsedSeconds = (now() - startTime) * 0.001;
-      if (elapsedSeconds > durationSeconds) {
-        this.stopLaunchSequence(sequence);
-        return;
-      }
-
-      const fireworkMatrix = this.createRandomizedLaunchMatrix(
-        baseMatrix,
-        spread
-      );
-      spawnFirework(fireworkMatrix);
-
-      sequence.timeoutId = window.setTimeout(
-        launchOnce,
-        intervalSeconds * 1000
-      );
-    };
-
-    // this.launchSequences.add(sequence);
-    launchOnce();
-    return () => this.stopLaunchSequence(sequence);
   }
 }
