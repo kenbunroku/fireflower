@@ -888,12 +888,39 @@ const playTimelineSelectionsSequentially = () => {
     }
 
     const count = selection.mode === "burst" ? 5 : 1;
-    console.log(selection);
 
-    for (let i = 0; i < count; i++) {
+    const isSokuhatsu = selection.burstType === "sokuhatsu";
+    const sokuhatsuDelayMs = 200;
+    const launchSingle = () => {
+      if (!isTimelineSequenceActive) {
+        return;
+      }
       const fireworkMatrix = fireworkManager.createRandomizedLaunchMatrix();
       selection.matrix = fireworkMatrix;
       triggerTimelineSelection(selection);
+    };
+
+    if (selection.mode === "burst" && isSokuhatsu) {
+      const timeouts = new Set();
+      const stop = () => {
+        timeouts.forEach((timeoutId) => window.clearTimeout(timeoutId));
+        timeouts.clear();
+      };
+      activeTimelineBurstStops.add(stop);
+      for (let i = 0; i < count; i++) {
+        const timeoutId = window.setTimeout(() => {
+          launchSingle();
+          if (i === count - 1) {
+            activeTimelineBurstStops.delete(stop);
+          }
+        }, i * sokuhatsuDelayMs);
+        timeouts.add(timeoutId);
+      }
+    } else {
+      // Keep simultaneous launches for renpatsu and non-burst modes
+      for (let i = 0; i < count; i++) {
+        launchSingle();
+      }
     }
 
     if (index + 1 >= timelineSelections.length) {
