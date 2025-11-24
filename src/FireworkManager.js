@@ -68,7 +68,7 @@ export default class FireworkManager {
       numberOfParticles = options.numberOfParticles ??
         this.params.numberOfParticles,
       times = options.times ?? this.params.times,
-      pointSize = options.poinSize ?? this.params.pointSize,
+      pointSize = options.pointSize ?? this.params.pointSize,
       radius = options.radius ?? this.params.radius,
       fireworkColor = options.fireworkColor ?? this.params.fireworkColor,
       launchDuration = this.params.launchDuration,
@@ -77,14 +77,28 @@ export default class FireworkManager {
       delayStep = this.params.delay,
       gravityStrentgh = this.params.gravityStrength,
       matrix = this.modelMatrix,
+      modelPositions = options.modelPositions,
     } = options;
 
     const positions = new Float32Array(numberOfParticles * 3 * times);
     const delays = new Float32Array(numberOfParticles * times);
     const unitDirs = new Float32Array(numberOfParticles * 3 * times);
+    const baseRadii = new Float32Array(numberOfParticles * times);
+
+    let point;
 
     for (let i = 0; i < numberOfParticles; i++) {
-      const point = randomPointOnSphere(0.1);
+      if (modelPositions) {
+        const baseIndex = i * 3;
+        point = {
+          x: modelPositions[baseIndex],
+          y: modelPositions[baseIndex + 1],
+          z: modelPositions[baseIndex + 2],
+        };
+      } else {
+        point = randomPointOnSphere(0.1);
+      }
+
       const len = Math.hypot(point.x, point.y, point.z) || 1.0;
       const ux = point.x / len;
       const uy = point.y / len;
@@ -92,7 +106,7 @@ export default class FireworkManager {
 
       for (let j = 0; j < times; j++) {
         const idx3 = (i * times + j) * 3;
-        const delayIndex = i * times + j;
+        const idx1 = i * times + j;
 
         positions[idx3 + 0] = point.x;
         positions[idx3 + 1] = point.y;
@@ -102,7 +116,9 @@ export default class FireworkManager {
         unitDirs[idx3 + 1] = uy;
         unitDirs[idx3 + 2] = uz;
 
-        delays[delayIndex] = j * delayStep;
+        delays[idx1] = j * delayStep;
+
+        baseRadii[idx1] = len;
       }
     }
 
@@ -123,6 +139,11 @@ export default class FireworkManager {
           componentsPerAttribute: 3,
           values: unitDirs,
         }),
+        baseRadius: new Cesium.GeometryAttribute({
+          componentDatatype: Cesium.ComponentDatatype.FLOAT,
+          componentsPerAttribute: 1,
+          values: baseRadii,
+        }),
       },
       primitiveType: Cesium.PrimitiveType.POINTS,
       boundingSphere: Cesium.BoundingSphere.fromVertices(positions),
@@ -136,7 +157,7 @@ export default class FireworkManager {
       ),
       u_pointSize: pointSize,
       u_time: 0.0,
-      u_radius: radius,
+      u_radius: radius, // ★ ここは「最大拡大係数」として使う
       u_duration: launchDuration,
       u_launchHeight: launchHeight,
       u_bloomDuration: bloomDuration,
@@ -239,8 +260,8 @@ export default class FireworkManager {
       typeof timestamp === "number"
         ? timestamp
         : typeof performance !== "undefined"
-          ? performance.now()
-          : Date.now();
+        ? performance.now()
+        : Date.now();
     const pausedOffsetMs =
       this.accumulatedPauseMs +
       (this.isAnimationPaused && this.pauseStartedMs
