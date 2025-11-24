@@ -801,10 +801,6 @@ const stopTimelinePlaybackSequence = () => {
 };
 
 const triggerTimelineSelection = (selection) => {
-  if (!selection) {
-    return;
-  }
-
   if (selection.mode === "burst") {
     const stop = fireworkManager.launchFireworkSequence(selection);
     if (typeof stop === "function") {
@@ -812,7 +808,29 @@ const triggerTimelineSelection = (selection) => {
     }
     return;
   }
-  fireworkManager.createFirework(selection);
+
+  if (
+    selection.fireworkType == "botan" ||
+    selection.fireworkColor == "meshibe"
+  ) {
+    const innerRadius = selection.radius * 0.6;
+    const outerRadius = selection.radius * 1.2;
+    const primaryColorHex = selection.fireworkColor;
+    const secondaryColorHex = selection.secondary;
+
+    fireworkManager.createFirework({
+      ...selection,
+      radius: innerRadius,
+      fireworkColor: primaryColorHex,
+    });
+    fireworkManager.createFirework({
+      ...selection,
+      radius: outerRadius,
+      fireworkColor: secondaryColorHex,
+    });
+  } else {
+    fireworkManager.createFirework(selection);
+  }
 };
 
 const playTimelineSelectionsSequentially = () => {
