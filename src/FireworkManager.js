@@ -32,6 +32,9 @@ export default class FireworkManager {
     this.launchSequences = new Set();
     this.launchOffsetScratch = new Cesium.Cartesian3();
     this.launchTranslationScratch = new Cesium.Matrix4();
+    this.isAnimationPaused = false;
+    this.pauseStartedMs = 0;
+    this.accumulatedPauseMs = 0;
   }
 
   setModelPositions(positions) {
@@ -65,9 +68,9 @@ export default class FireworkManager {
       numberOfParticles = options.numberOfParticles ??
         this.params.numberOfParticles,
       times = options.times ?? this.params.times,
-      pointSize = this.params.pointSize,
-      radius = this.params.radius,
-      fireworkColor = this.params.fireworkColor,
+      pointSize = options.poinSize ?? this.params.pointSize,
+      radius = options.radius ?? this.params.radius,
+      fireworkColor = options.fireworkColor ?? this.params.fireworkColor,
       launchDuration = this.params.launchDuration,
       bloomDuration = this.params.bloomDuration,
       launchHeight = this.params.height,
@@ -200,18 +203,65 @@ export default class FireworkManager {
     });
   }
 
+  pauseAnimation() {
+    if (this.isAnimationPaused) {
+      return;
+    }
+    this.isAnimationPaused = true;
+    const now =
+      typeof performance !== "undefined" ? performance.now() : Date.now();
+    this.pauseStartedMs = now;
+  }
+
+  resumeAnimation() {
+    if (!this.isAnimationPaused) {
+      return;
+    }
+    const now =
+      typeof performance !== "undefined" ? performance.now() : Date.now();
+    if (this.pauseStartedMs) {
+      this.accumulatedPauseMs += now - this.pauseStartedMs;
+    }
+    this.pauseStartedMs = 0;
+    this.isAnimationPaused = false;
+  }
+
+  toggleAnimationPause() {
+    if (this.isAnimationPaused) {
+      this.resumeAnimation();
+    } else {
+      this.pauseAnimation();
+    }
+  }
+
   animate(fireworkArray, timestamp) {
+    const nowMs =
+      typeof timestamp === "number"
+        ? timestamp
+        : typeof performance !== "undefined"
+          ? performance.now()
+          : Date.now();
+    const pausedOffsetMs =
+      this.accumulatedPauseMs +
+      (this.isAnimationPaused && this.pauseStartedMs
+        ? Math.max(nowMs - this.pauseStartedMs, 0)
+        : 0);
+
     fireworkArray.forEach((firework) => {
       if (!firework.startTime) {
-        firework.startTime = timestamp;
+        firework.startTime = nowMs;
       }
       const uniforms = firework.appearance?.uniforms;
       if (!uniforms) {
         return;
       }
-      const elapsedSeconds = (timestamp - firework.startTime) * 0.001;
+      const elapsedMs = Math.max(
+        nowMs - firework.startTime - pausedOffsetMs,
+        0
+      );
+      const elapsedSeconds = elapsedMs * 0.001;
       const launchDuration = Math.max(
-        uniforms.u_duration || params.launchDuration,
+        uniforms.u_duration || this.params.launchDuration,
         1e-6
       );
       const launchProgress = Math.min(elapsedSeconds / launchDuration, 1.0);

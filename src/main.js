@@ -961,9 +961,12 @@ const startTimelineProgressAnimation = () => {
 
 timelinePlayButton.addEventListener("click", () => {
   if (isTimelineProgressPlaying) {
+    fireworkManager.pauseAnimation();
     stopTimelineProgressAnimation();
     return;
   }
+
+  fireworkManager.resumeAnimation();
 
   if (timelineSelections.length === 0) {
     return;
