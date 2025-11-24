@@ -835,14 +835,7 @@ const stopTimelinePlaybackSequence = () => {
 };
 
 const triggerTimelineSelection = (selection) => {
-  if (selection.mode === "burst") {
-    const stop = fireworkManager.launchFireworkSequence(selection);
-    if (typeof stop === "function") {
-      activeTimelineBurstStops.add(stop);
-    }
-    return;
-  }
-
+  const matrix = selection.matrix;
   if (
     selection.fireworkType == "botan" ||
     selection.fireworkColor == "meshibe"
@@ -856,19 +849,22 @@ const triggerTimelineSelection = (selection) => {
       ...selection,
       radius: innerRadius,
       fireworkColor: primaryColorHex,
+      matrix: matrix,
     });
     fireworkManager.createFirework({
       ...selection,
       radius: outerRadius,
       fireworkColor: secondaryColorHex,
+      matrix: matrix,
     });
   } else if (selection.fireworkType == "heart") {
     fireworkManager.createFirework({
       ...selection,
       modelPositions: heartModelPositions,
+      matrix: matrix,
     });
   } else {
-    fireworkManager.createFirework(selection);
+    fireworkManager.createFirework({ ...selection, matrix: matrix });
   }
 };
 
@@ -891,7 +887,14 @@ const playTimelineSelectionsSequentially = () => {
       return;
     }
 
-    triggerTimelineSelection(selection);
+    const count = selection.mode === "burst" ? 5 : 1;
+    console.log(selection);
+
+    for (let i = 0; i < count; i++) {
+      const fireworkMatrix = fireworkManager.createRandomizedLaunchMatrix();
+      selection.matrix = fireworkMatrix;
+      triggerTimelineSelection(selection);
+    }
 
     if (index + 1 >= timelineSelections.length) {
       isTimelineSequenceActive = false;
@@ -1075,6 +1078,9 @@ addFireworkButton.addEventListener("click", () => {
   const secondaryColorHex = resolveSecondaryPresetKey(activeFireworkColorKey);
   const launchHeight = Number(heightSlider?.value);
 
+  const isRenpatsu =
+    activeMode === "burst" && activeBurstTypeKey === "renpatsu";
+
   const selection = {
     numberOfParticles: category[activeFireworkCategoryKey].numberOfParticles,
     pointSize: category[activeFireworkCategoryKey].pointSize,
@@ -1082,15 +1088,17 @@ addFireworkButton.addEventListener("click", () => {
     bloomDuration: category[activeFireworkCategoryKey].bloomDuration,
     fireworkType: activeFireworkCategoryKey,
     fireworkColor: fireworkColorHex,
-    fireworkColorKey: activeFireworkColorKey,
+    fireworkColorKey: activeFireworkCategoryKey,
     secondary:
-      activeFireworkCategoryKey == "botan" || "meshibe"
+      activeFireworkCategoryKey === "botan" ||
+      activeFireworkCategoryKey === "meshibe"
         ? secondaryColorHex
         : undefined,
     launchHeight: launchHeight,
     times: category[activeFireworkCategoryKey].times,
     gravityStrength: category[activeFireworkCategoryKey].gravityStrength,
     mode: activeMode,
+    burstType: isBurstTypeEnabled() ? activeBurstTypeKey : undefined,
   };
   timelineSelections.push(selection);
 
