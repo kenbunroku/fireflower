@@ -12,8 +12,6 @@ Cesium.Ion.defaultAccessToken =
 
 const isDebugMode = true;
 
-const pane = new Pane();
-
 // Loaders
 const dracoLoader = new DRACOLoader();
 dracoLoader.setDecoderPath("./static/draco/");
@@ -1319,6 +1317,7 @@ function animate() {
 animate();
 
 const createDebugPane = () => {
+  const pane = new Pane();
   pane.addBinding(params, "category", {
     options: fireWorkCategory,
   });
