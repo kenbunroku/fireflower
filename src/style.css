@@ -114,9 +114,9 @@ button {
 }
 
 .tooltip.-bottom {
-  top: calc(100% + var(--_triangle-size) + var(--_gap));
-  left: 50%;
-  translate: -50% var(--_y, 0);
+  bottom: 50%;
+  right: calc(100% + var(--_triangle-size) + var(--_gap));
+  translate: var(--_x, 0) 50%;
 }
 
 .tooltip::after {
@@ -501,7 +501,6 @@ button {
 
 .firework-type-card__label {
   font-size: 0.85rem;
-  font-weight: 500;
 }
 
 .firework-type-card__badge {
@@ -526,8 +525,6 @@ button {
   border-radius: 8px;
   border: 2px solid transparent;
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease,
-    border-color 0.15s ease;
 }
 
 .firework-color-swatch:hover {
