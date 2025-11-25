@@ -1,6 +1,7 @@
 :root {
-  font-family: "Inter", "Noto Sans JP", system-ui, -apple-system,
-    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --sidebar-width: 360px;
+  font-family: "Noto Sans JP", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
   color: #f5f7ff;
   background-color: #060910;
 }
@@ -31,7 +32,6 @@ button {
   height: 100%;
   margin-left: auto;
   padding: 24px;
-  backdrop-filter: blur(26px);
   pointer-events: auto;
   display: flex;
   flex-direction: column;
@@ -146,6 +146,9 @@ button {
 .control-panel-container {
   display: flex;
   pointer-events: auto;
+  align-self: flex-end;
+  order: -1;
+  width: fit-content;
 }
 
 .control-panel__buttons {
@@ -153,8 +156,40 @@ button {
   align-items: center;
   gap: 12px;
   pointer-events: auto;
-  position: relative;
-  z-index: 0;
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 6;
+  justify-content: flex-end;
+  transition: right 0.3s ease;
+}
+
+.control-panel-container.is-open .control-panel__buttons {
+  right: calc(var(--sidebar-width) + 24px);
+}
+
+.control-panel__buttons .cesium-viewer-fullscreenContainer {
+  position: static;
+  inset: auto;
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
+.control-panel__buttons .cesium-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background-color: rgba(10, 12, 21, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.control-panel__buttons .cesium-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .open__button {
@@ -173,13 +208,19 @@ button {
   position: absolute;
   right: 0;
   top: 0;
+  width: var(--sidebar-width);
+  max-width: 90vw;
   height: 100%;
   margin-left: auto;
   padding: 24px;
-  background: rgba(15, 20, 32, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(
+    176deg,
+    rgba(255, 255, 255, 0.3) 0.05%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+  border: 1px solid rgba(220, 220, 220, 0.5);
   box-shadow: 0 40px 80px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(26px);
+  backdrop-filter: blur(10px);
   pointer-events: auto;
   display: flex;
   flex-direction: column;
@@ -240,6 +281,7 @@ button {
   font-size: 1.4rem;
   font-weight: 600;
   color: #fff;
+  font-family: "fot-tsukumin-pr6n", sans-serif;
 }
 
 .panel-header__actions {
@@ -270,7 +312,13 @@ button {
   gap: 8px;
   padding: 4px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
+  stroke-width: 1px;
+  background: linear-gradient(
+    91deg,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+  stroke: rgba(255, 255, 255, 0.1);
 }
 
 .panel-tab {
@@ -284,12 +332,16 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 12px;
 }
 
 .panel-tab.is-active {
-  background: #ffffff;
-  color: #0f1320;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(
+    91deg,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
 }
 
 .panel-section {
@@ -305,13 +357,13 @@ button {
 
 .section-title {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 1.3rem;
   font-weight: 600;
 }
 
 .section-subtitle {
   margin: 2px 0 0;
-  font-size: 0.8rem;
+  font-size: 1rem;
   color: rgba(255, 255, 255, 0.6);
 }
 
@@ -343,13 +395,7 @@ button {
   transition: border 0.2s ease, transform 0.2s ease;
 }
 
-.firework-type-card[data-firework-type="kiku"],
-.firework-type-card[data-firework-type="botan"],
-.firework-type-card[data-firework-type="meshibe"],
-.firework-type-card[data-firework-type="kanmukiku"],
-.firework-type-card[data-firework-type="poka"],
-.firework-type-card[data-firework-type="heart"],
-.firework-type-card[data-firework-type="love"] {
+.firework-type-card {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -375,13 +421,27 @@ button {
   background-image: url("/img/pokamono.png");
 }
 
-.firework-type-card[data-firework-type="heart"],
-.firework-type-card[data-firework-type="love"] {
+.firework-type-card[data-firework-type="heart"] {
   background-image: url("/img/heart.png");
 }
 
+.firework-type-card[data-firework-type="love"] {
+  background-image: url("/img/marryme.png");
+}
+
+.firework-type-card[data-firework-type="renpatsu"] {
+  background-image: url("/img/renpatsu.png");
+}
+
+.firework-type-card[data-firework-type="sokuhatsu"] {
+  background-image: url("/img/hayauchi.png");
+}
+
 .firework-type-card:hover {
-  transform: translateY(-2px);
+  background-color: rgba(255, 255, 255, 0.2);
+  background-blend-mode: screen;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35),
+    0 6px 12px rgba(0, 0, 0, 0.25);
 }
 
 .firework-type-card.is-active {
@@ -464,11 +524,16 @@ button {
 }
 
 .firework-color-swatch:hover {
-  transform: translateY(-2px);
+  filter: brightness(1.1);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35),
+    0 6px 12px rgba(0, 0, 0, 0.25);
 }
 
 .firework-color-swatch.is-active {
   border-color: #fff;
+}
+.firework-color-swatch[data-firework-color="white"].is-active {
+  border-color: #000;
 }
 
 .firework-color-swatch[data-firework-color="cream"] {
@@ -538,11 +603,16 @@ button {
   border: none;
   border-radius: 8px;
   padding: 14px 20px;
-  background: linear-gradient(120deg, #5244ff, #ff5fa2);
+  border: 1px solid rgba(255, 255, 255);
+  background: linear-gradient(
+    92deg,
+    rgba(22, 55, 107, 0.3) 0%,
+    rgba(22, 55, 107, 0.5) 101.28%
+  );
   color: #fff;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 20px 30px rgba(255, 99, 161, 0.35);
+  box-shadow: 1px 1px 15px 0 rgba(135, 117, 255, 0.6) inset;
   margin-top: auto;
 }
 
@@ -719,6 +789,9 @@ button {
   width: fit-content;
   z-index: 6;
   display: none;
+  position: fixed;
+  top: 24px;
+  left: 24px;
   padding: 10px 16px;
   border: none;
   border-radius: 8px;

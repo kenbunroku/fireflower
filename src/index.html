@@ -17,7 +17,38 @@
       href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined"
       rel="stylesheet"
     />
-    <title>打ち上げ花火、横から見るか、上から見るか</title>
+    <script>
+      (function (d) {
+        var config = {
+            kitId: "tqr8gjy",
+            scriptTimeout: 3000,
+            async: true,
+          },
+          h = d.documentElement,
+          t = setTimeout(function () {
+            h.className =
+              h.className.replace(/\bwf-loading\b/g, "") + " wf-inactive";
+          }, config.scriptTimeout),
+          tk = d.createElement("script"),
+          f = false,
+          s = d.getElementsByTagName("script")[0],
+          a;
+        h.className += " wf-loading";
+        tk.src = "https://use.typekit.net/" + config.kitId + ".js";
+        tk.async = true;
+        tk.onload = tk.onreadystatechange = function () {
+          a = this.readyState;
+          if (f || (a && a != "complete" && a != "loaded")) return;
+          f = true;
+          clearTimeout(t);
+          try {
+            Typekit.load(config);
+          } catch (e) {}
+        };
+        s.parentNode.insertBefore(tk, s);
+      })(document);
+    </script>
+    <title>手作り花火、横から見るか？上から見るか？</title>
   </head>
   <body>
     <div id="cesiumContainer"></div>
@@ -59,7 +90,7 @@
 
         <aside
           id="sidebar"
-          class="control-panel glass"
+          class="control-panel"
           aria-label="花火ジェネレーターの設定"
           popover="manual"
           data-popover-type="sidebar"
@@ -84,7 +115,7 @@
                 data-mode="solo"
                 type="button"
               >
-                <span class="material-icons-outlined"> bolt </span>
+                <span class="material-symbols-outlined"> bolt </span>
                 <span>単発</span>
               </button>
               <button class="panel-tab" data-mode="burst" type="button">
@@ -95,25 +126,10 @@
 
             <section class="panel-section" data-section="burst-type">
               <div class="section-heading">
-                <p class="section-title">連発の種類</p>
+                <p class="section-title">打ち上げ方</p>
                 <p class="section-subtitle">連発のパターンを選択</p>
               </div>
               <div class="firework-type-grid">
-                <div
-                  class="firework-type-card is-active"
-                  data-firework-type="sokuhatsu"
-                  type="button"
-                >
-                  <div class="firework-type-card__content">
-                    <div class="firework-type-card__info">
-                      <span class="firework-type-card__label">速発</span>
-                    </div>
-                    <span
-                      class="material-icons-outlined firework-type-card__icon"
-                      >check_circle</span
-                    >
-                  </div>
-                </div>
                 <div
                   class="firework-type-card"
                   data-firework-type="renpatsu"
@@ -121,6 +137,21 @@
                 >
                   <div class="firework-type-card__content">
                     <span class="firework-type-card__label">連発</span>
+                    <span
+                      class="material-icons-outlined firework-type-card__icon"
+                      >check_circle</span
+                    >
+                  </div>
+                </div>
+                <div
+                  class="firework-type-card is-active"
+                  data-firework-type="sokuhatsu"
+                  type="button"
+                >
+                  <div class="firework-type-card__content">
+                    <div class="firework-type-card__info">
+                      <span class="firework-type-card__label">早打ち</span>
+                    </div>
                     <span
                       class="material-icons-outlined firework-type-card__icon"
                       >check_circle</span

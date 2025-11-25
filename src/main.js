@@ -232,6 +232,36 @@ viewer = new Cesium.Viewer("cesiumContainer", {
   geocoder: false,
 });
 
+const controlPanelButtons = document.querySelector(".control-panel__buttons");
+const fullscreenContainer =
+  viewer?.fullscreenButton?.container ||
+  viewer.container.querySelector(".cesium-viewer-fullscreenContainer");
+const controlPanelContainer = document.querySelector(".control-panel-container");
+const sidebar = document.getElementById("sidebar");
+
+if (controlPanelButtons && fullscreenContainer) {
+  fullscreenContainer.classList.add("control-panel__fullscreen");
+  controlPanelButtons.insertBefore(
+    fullscreenContainer,
+    controlPanelButtons.querySelector(".open__button")
+  );
+}
+
+const updateControlPanelOffset = () => {
+  if (!controlPanelContainer || !sidebar) {
+    return;
+  }
+  controlPanelContainer.classList.toggle(
+    "is-open",
+    sidebar.matches(":popover-open")
+  );
+};
+
+if (sidebar) {
+  sidebar.addEventListener("toggle", updateControlPanelOffset);
+  updateControlPanelOffset();
+}
+
 scene = viewer.scene;
 scene.globe.depthTestAgainstTerrain = true;
 scene.debugShowFramesPerSecond = true;
@@ -320,9 +350,9 @@ const fireworkManager = new FireworkManager({
   modelMatrix,
   modelPositions: heartModelPositions,
 });
-const fireworks = fireworkManager.getFireworks();
+const fireworks = [];
 
-const getPrimaryAppearance = () => fireworkManager.getPrimaryAppearance();
+const getPrimaryAppearance = () => fireworks[0]?.appearance;
 
 const setPointColorFromHex = (
   hex,
@@ -340,8 +370,67 @@ const setPointColorFromHex = (
   targetAppearance.uniforms.u_color = color;
 };
 
-const primaryFirework = fireworkManager.createFirework();
-setPointColorFromHex(params.fireworkColor, primaryFirework.appearance);
+function pickRandomColorKey() {
+  const presetKeys = Object.keys(fireworkColorPresets);
+  if (presetKeys.length === 0) {
+    return defaultFireworkColorKey;
+  }
+  const randomIndex = Math.floor(Math.random() * presetKeys.length);
+  return presetKeys[randomIndex] ?? defaultFireworkColorKey;
+}
+
+const createRandomFirework = (startDelayMs = 0) => {
+  const availableCategories = Object.entries(category)
+    .filter(([, value]) => (value?.numberOfParticles ?? 0) > 0)
+    .map(([key]) => key);
+  const categoryKeys =
+    availableCategories.length > 0
+      ? availableCategories
+      : Object.keys(category);
+  const categoryKey =
+    categoryKeys[Math.floor(Math.random() * categoryKeys.length)] || "kiku";
+  const colorKey = pickRandomColorKey();
+  const fireworkColor =
+    fireworkColorPresets[colorKey]?.hex ?? params.fireworkColor;
+  const modelPositions =
+    categoryKey === "heart"
+      ? heartModelPositions
+      : categoryKey === "love"
+      ? loveModelPositions
+      : undefined;
+
+  const firework = fireworkManager.createFirework({
+    ...category[categoryKey],
+    fireworkColor,
+    modelPositions,
+    matrix: fireworkManager.createRandomizedLaunchMatrix(),
+    startDelayMs,
+  });
+  firework.originalColorKey = colorKey;
+  firework.keepOriginalColor = true;
+  fireworks.push(firework);
+  return firework;
+};
+
+const createRandomFireworks = (count = 5) => {
+  const total = Math.max(Math.floor(count), 0);
+  for (let i = 0; i < total; i++) {
+    const delayMs = i * (params.interval * 1000 || 0);
+    createRandomFirework(delayMs);
+  }
+};
+
+createRandomFireworks(5);
+
+const scheduleFireworksSequentially = () => {
+  const spacingMs = Math.max(params.interval * 1000, 0);
+  fireworks.forEach((firework, index) => {
+    firework.startDelayMs = index * spacingMs;
+    firework.startTime = undefined;
+  });
+};
+
+scheduleFireworksSequentially();
 
 const highlightState = {
   feature: undefined,
@@ -574,6 +663,9 @@ function updateFireworkColors(colorKeyOrHex) {
   params.fireworkColor = colorHex;
 
   fireworks.forEach((firework) => {
+    if (firework.keepOriginalColor) {
+      return;
+    }
     setPointColorFromHex(colorHex, firework.appearance);
   });
   if (fireworkColorBinding) {
