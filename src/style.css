@@ -401,31 +401,38 @@ button {
   background-repeat: no-repeat;
 }
 
-.firework-type-card[data-firework-type="kiku"] {
+.firework-type-card[data-firework-type="kiku"],
+.timeline-card[data-firework-type="kiku"] {
   background-image: url("/img/kiku.png");
 }
 
-.firework-type-card[data-firework-type="botan"] {
+.firework-type-card[data-firework-type="botan"],
+.timeline-card[data-firework-type="botan"] {
   background-image: url("/img/botan.png");
 }
 
-.firework-type-card[data-firework-type="meshibe"] {
+.firework-type-card[data-firework-type="meshibe"],
+.timeline-card[data-firework-type="meshibe"] {
   background-image: url("/img/shiyu.png");
 }
 
-.firework-type-card[data-firework-type="kanmukiku"] {
+.firework-type-card[data-firework-type="kanmukiku"],
+.timeline-card[data-firework-type="kanmukiku"] {
   background-image: url("/img/kamurogiku.png");
 }
 
-.firework-type-card[data-firework-type="poka"] {
+.firework-type-card[data-firework-type="poka"],
+.timeline-card[data-firework-type="poka"] {
   background-image: url("/img/pokamono.png");
 }
 
-.firework-type-card[data-firework-type="heart"] {
+.firework-type-card[data-firework-type="heart"],
+.timeline-card[data-firework-type="heart"] {
   background-image: url("/img/heart.png");
 }
 
-.firework-type-card[data-firework-type="love"] {
+.firework-type-card[data-firework-type="love"],
+.timeline-card[data-firework-type="love"] {
   background-image: url("/img/marryme.png");
 }
 
@@ -704,34 +711,6 @@ button {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-}
-
-.timeline-card[data-firework-type="kiku"] {
-  background-image: url("/img/kiku.png");
-}
-
-.timeline-card[data-firework-type="botan"] {
-  background-image: url("/img/botan.png");
-}
-
-.timeline-card[data-firework-type="meshibe"] {
-  background-image: url("/img/shiyu.png");
-}
-
-.timeline-card[data-firework-type="kanmukiku"] {
-  background-image: url("/img/kamurogiku.png");
-}
-
-.timeline-card[data-firework-type="poka"] {
-  background-image: url("/img/pokamono.png");
-}
-
-.timeline-card[data-firework-type="heart"] {
-  background-image: url("/img/heart.png");
-}
-
-.timeline-card[data-firework-type="love"] {
-  background-image: url("/img/heart.png");
 }
 
 .timeline-card.is-active {
