@@ -236,7 +236,9 @@ const controlPanelButtons = document.querySelector(".control-panel__buttons");
 const fullscreenContainer =
   viewer?.fullscreenButton?.container ||
   viewer.container.querySelector(".cesium-viewer-fullscreenContainer");
-const controlPanelContainer = document.querySelector(".control-panel-container");
+const controlPanelContainer = document.querySelector(
+  ".control-panel-container"
+);
 const sidebar = document.getElementById("sidebar");
 
 if (controlPanelButtons && fullscreenContainer) {
@@ -756,7 +758,7 @@ const burstTypeCards = Array.from(
 );
 let activeBurstTypeKey =
   burstTypeCards.find((card) => card.classList.contains("is-active"))?.dataset
-    .fireworkType || "sokuhatsu";
+    .fireworkType || "renpatsu";
 const isBurstTypeEnabled = () => activeMode === "burst";
 const setActiveBurstTypeCard = (typeKey) => {
   burstTypeCards.forEach((card) => {
@@ -1421,4 +1423,4 @@ const createDebugPane = () => {
     });
 };
 
-if (isDebugMode) createDebugPane();
+// if (isDebugMode) createDebugPane();
