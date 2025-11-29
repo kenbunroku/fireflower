@@ -21,49 +21,54 @@ gltfLoader.setDRACOLoader(dracoLoader);
 let heartModelPositions = new Float32Array();
 let loveModelPositions = new Float32Array();
 
-gltfLoader.load("./heart.glb", (gltf) => {
-  const positionAttributes = [];
+const loadGltfModelPositions = (modelPath, onPositionsLoaded) => {
+  gltfLoader.load(
+    modelPath,
+    (gltf) => {
+      const positionAttributes = [];
 
-  gltf.scene.traverse((child) => {
-    if (!child.isMesh) {
-      return;
+      gltf.scene.traverse((child) => {
+        if (!child.isMesh) {
+          return;
+        }
+        const geo = child.geometry.clone();
+        geo.applyMatrix4(child.matrixWorld);
+        const positionAttr = geo.attributes?.position;
+        if (positionAttr?.array) {
+          positionAttributes.push(positionAttr.array);
+        }
+      });
+
+      const basePositions = positionAttributes[0];
+      const rotatedPositions = basePositions
+        ? rotatePositionsAroundX(basePositions, Math.PI / 2)
+        : new Float32Array();
+      onPositionsLoaded(rotatedPositions);
+    },
+    undefined,
+    (error) => {
+      console.error(`Failed to load model from ${modelPath}`, error);
+      onPositionsLoaded(new Float32Array());
     }
-    const geo = child.geometry.clone();
-    geo.applyMatrix4(child.matrixWorld);
-    const positionAttr = geo.attributes?.position;
-    if (positionAttr?.array) {
-      positionAttributes.push(positionAttr.array);
-    }
-  });
+  );
+};
 
-  const basePositions = positionAttributes[0];
-  if (basePositions) {
-    heartModelPositions = rotatePositionsAroundX(basePositions, Math.PI / 2);
-    category.heart.numberOfParticles = heartModelPositions.length / 3;
-  }
-});
-
-gltfLoader.load("./merryme.glb", (gltf) => {
-  const positionAttributes = [];
-
-  gltf.scene.traverse((child) => {
-    if (!child.isMesh) {
-      return;
-    }
-    const geo = child.geometry.clone();
-    geo.applyMatrix4(child.matrixWorld);
-    const positionAttr = geo.attributes?.position;
-    if (positionAttr?.array) {
-      positionAttributes.push(positionAttr.array);
-    }
-  });
-
-  const basePositions = positionAttributes[0];
-  if (basePositions) {
-    loveModelPositions = rotatePositionsAroundX(basePositions, Math.PI / 2);
-    category.love.numberOfParticles = loveModelPositions.length / 3;
-  }
-});
+const gltfModels = {
+  heart: {
+    path: "./heart.glb",
+    onLoad: (positions) => {
+      heartModelPositions = positions;
+      category.heart.numberOfParticles = positions.length / 3;
+    },
+  },
+  love: {
+    path: "./merryme.glb",
+    onLoad: (positions) => {
+      loveModelPositions = positions;
+      category.love.numberOfParticles = positions.length / 3;
+    },
+  },
+};
 
 const fireWorkCategory = {
   kiku: "菊",
@@ -180,6 +185,9 @@ const modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(
 
 const setup = () => {
   setupPlateauAssets();
+  Object.values(gltfModels).map((model) =>
+    loadGltfModelPositions(model.path, model.onLoad)
+  );
   setupBloom();
 };
 
