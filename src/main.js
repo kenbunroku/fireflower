@@ -7,8 +7,14 @@ import { Pane } from "tweakpane";
 import FireworkManager from "./FireworkManager";
 import { rotatePositionsAroundX } from "./util.js";
 
-Cesium.Ion.defaultAccessToken =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkYTE4NjhhMy01YjM0LTQ0MDYtOThjMi1hNWJlYmI5MWY3YzQiLCJpZCI6MzQ2NzMzLCJpYXQiOjE3NTk0NTA4NDN9.IQ-97lJJ-qTrkTUllzEMiMAIgCVSEb9eQxwIbSJ_zjo";
+const cesiumAccessToken = import.meta.env?.VITE_CESIUM_ACCESS_TOKEN;
+if (!cesiumAccessToken) {
+  console.error(
+    "Cesium access token is missing. Set VITE_CESIUM_ACCESS_TOKEN in your .env file."
+  );
+} else {
+  Cesium.Ion.defaultAccessToken = cesiumAccessToken;
+}
 
 const isDebugMode = true;
 

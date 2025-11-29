@@ -17,6 +17,8 @@ export default defineConfig(() => {
         target: "esnext",
       },
     },
+    // Load env vars from the repo root so VITE_* in .env are picked up even though root is set to src/
+    envDir: "../",
     plugins: [cesium(), glsl()],
   };
 });
