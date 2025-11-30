@@ -2,7 +2,6 @@ import * as Cesium from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
-import { Pane } from "tweakpane";
 
 import FireworkManager from "./FireworkManager";
 import { rotatePositionsAroundX } from "./util.js";
