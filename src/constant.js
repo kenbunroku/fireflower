@@ -12,14 +12,14 @@ export const fireWorkCategory = {
 
 export const params = {
   category: fireWorkCategory.kiku,
-  numberOfParticles: 400,
-  pointSize: 10.0,
+  numberOfParticles: 250,
+  pointSize: 5.0,
   radius: 800,
   fireworkColor: "#ffd256",
   launchDuration: 2.0,
   bloomDuration: 2.0,
   fireworkDuration: 2.0,
-  times: 30,
+  times: 20,
   gravityStrength: 1,
   buildingColor: "#5fd4ff",
   buildingOpacity: 0.7,
@@ -31,15 +31,15 @@ export const params = {
 
 export const category = {
   kiku: {
-    numberOfParticles: 400,
+    numberOfParticles: 250,
     pointSize: 4.0,
     radius: 800,
     bloomDuration: 2,
-    times: 30,
+    times: 20,
     gravityStrength: 1,
   },
   botan: {
-    numberOfParticles: 400,
+    numberOfParticles: 250,
     pointSize: 4.0,
     radius: 800,
     bloomDuration: 2,
@@ -47,27 +47,27 @@ export const category = {
     gravityStrength: 1,
   },
   meshibe: {
-    numberOfParticles: 400,
+    numberOfParticles: 250,
     pointSize: 4.0,
     radius: 800,
     bloomDuration: 3,
-    times: 100,
+    times: 60,
     gravityStrength: 1,
   },
   kanmukiku: {
-    numberOfParticles: 400,
+    numberOfParticles: 250,
     pointSize: 4.0,
     radius: 800,
     bloomDuration: 3,
-    times: 100,
+    times: 60,
     gravityStrength: 1,
   },
   poka: {
-    numberOfParticles: 400,
+    numberOfParticles: 250,
     pointSize: 4.0,
     radius: 200,
     bloomDuration: 3,
-    times: 100,
+    times: 60,
     gravityStrength: 4,
   },
   heart: {
@@ -120,6 +120,6 @@ export const timelineModeLabels = {
   burst: "連発",
 };
 
-export const timelinePlaybackDurationMs = 7500;
+export const timelinePlaybackDurationMs = 10000;
 
 export const roofViewOffsetMeters = 20.0;
