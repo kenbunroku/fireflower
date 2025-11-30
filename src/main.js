@@ -861,7 +861,8 @@ const updateTimelineClearButtonVisibility = () => {
   if (!timelineClearButton) {
     return;
   }
-  timelineClearButton.style.display = timelineSelections.length > 0 ? "" : "none";
+  timelineClearButton.style.display =
+    timelineSelections.length > 0 ? "" : "none";
 };
 const updateTimelinePanelVisibility = () => {
   if (!timelinePanel) {
@@ -967,6 +968,17 @@ const registerTimelineCard = (card) => {
   }
   card.addEventListener("click", () => handleTimelineCardClick(card));
 };
+const removeTimelineCardElement = (card) => {
+  if (!card) {
+    return;
+  }
+  const parent = card.parentElement;
+  if (parent?.classList.contains("timeline-card-wrapper")) {
+    parent.remove();
+    return;
+  }
+  card.remove();
+};
 const addTimelineCard = ({
   fireworkType,
   fireworkColor,
@@ -979,6 +991,8 @@ const addTimelineCard = ({
   if (!timelineCarousel) {
     return;
   }
+  const wrapper = document.createElement("div");
+  wrapper.className = "timeline-card-wrapper";
   const card = document.createElement("div");
   card.className = "timeline-card";
   card.dataset.fireworkType = fireworkType;
@@ -1016,7 +1030,8 @@ const addTimelineCard = ({
   colorIndicatorIcon.textContent = modeIcon;
   colorIndicator.appendChild(colorIndicatorIcon);
   card.append(colorIndicator, title, meta);
-  timelineCarousel.appendChild(card);
+  wrapper.appendChild(card);
+  timelineCarousel.appendChild(wrapper);
   timelineCards.push(card);
   registerTimelineCard(card);
 };
@@ -1052,10 +1067,7 @@ const updateTimelineCard = (card, selection, selectionIndex) => {
       ? selection.fireworkColorKey
       : selection.fireworkColor?.toUpperCase() || "CUSTOM";
     colorIndicator.title = modeLabel;
-    colorIndicator.setAttribute(
-      "aria-label",
-      `${modeLabel} / ${colorLabel}`
-    );
+    colorIndicator.setAttribute("aria-label", `${modeLabel} / ${colorLabel}`);
     const icon = colorIndicator.querySelector(".timeline-card__color-icon");
     if (icon) {
       icon.textContent =
@@ -1517,7 +1529,7 @@ if (deleteFireworkButton) {
       (card) => Number(card.dataset.selectionIndex) === deleteIndex
     );
     if (targetCard) {
-      targetCard.remove();
+      removeTimelineCardElement(targetCard);
     }
     timelineCards = timelineCards.filter(
       (card) => Number(card.dataset.selectionIndex) !== deleteIndex
@@ -1546,7 +1558,7 @@ const clearTimelineData = () => {
   stopTimelinePlaybackSequence();
   clearTimelineFireworkPrimitives();
   timelineSelections.length = 0;
-  timelineCards.forEach((card) => card.remove());
+  timelineCards.forEach((card) => removeTimelineCardElement(card));
   timelineCards = [];
   if (timelineCarousel) {
     timelineCarousel.innerHTML = "";

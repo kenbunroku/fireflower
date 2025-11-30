@@ -722,24 +722,28 @@ button {
   padding-bottom: 4px;
 }
 
+.timeline-card-wrapper {
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 24px;
+  background-image: conic-gradient(
+    transparent calc(var(--progress, 3) * 1%),
+    var(--outline, white) calc(var(--progress, 3) * 1%)
+  );
+}
+
 .timeline-card {
-  border: 1px solid transparent;
-  border-radius: 18px;
-  padding: 14px;
-  text-align: left;
-  background: linear-gradient(rgba(5, 8, 15, 0.65), rgba(5, 8, 15, 0.65)),
-    rgba(255, 255, 255, 0.08);
-  color: #fff;
+  border-radius: 20px;
+  width: 93%;
+  height: 93%;
   cursor: pointer;
   aspect-ratio: 1 / 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  position: relative;
   transition: border 0.2s ease, transform 0.2s ease;
   background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  position: relative;
 }
 
 .timeline-card.is-active {
