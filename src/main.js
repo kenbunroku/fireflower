@@ -183,7 +183,7 @@ if (sidebar) {
 
 scene = viewer.scene;
 scene.globe.depthTestAgainstTerrain = true;
-scene.debugShowFramesPerSecond = false;
+scene.debugShowFramesPerSecond = true;
 scene.highDynamicRange = true;
 
 const buildingTilesets = [];
