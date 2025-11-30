@@ -342,7 +342,7 @@ const createRandomFireworks = (count = 5) => {
 createRandomFireworks(5);
 
 const scheduleFireworksSequentially = () => {
-  const spacingMs = Math.max(params.interval * 1000, 0);
+  const spacingMs = Math.max(params.interval * 1500, 0);
   fireworks.forEach((firework, index) => {
     firework.startDelayMs = index * spacingMs;
     firework.startTime = undefined;
@@ -350,6 +350,63 @@ const scheduleFireworksSequentially = () => {
 };
 
 scheduleFireworksSequentially();
+
+let isFireworksIdleLooping = false;
+let fireworksIdleLoopTimeoutId;
+
+const setFireworksVisibility = (isVisible) => {
+  fireworks.forEach((firework) => {
+    if (firework.primitive) {
+      firework.primitive.show = isVisible;
+    }
+  });
+};
+
+const resetFireworksStartTimes = () => {
+  const now =
+    typeof performance !== "undefined" ? performance.now() : Date.now();
+  fireworks.forEach((firework) => {
+    firework.startTime = now;
+  });
+};
+
+const stopFireworksIdleLoop = () => {
+  isFireworksIdleLooping = false;
+  if (fireworksIdleLoopTimeoutId) {
+    window.clearTimeout(fireworksIdleLoopTimeoutId);
+    fireworksIdleLoopTimeoutId = undefined;
+  }
+};
+
+const getFireworksLoopDurationMs = () => {
+  const spacingMs = Math.max(params.interval * 1000, 0);
+  const sequentialSpanMs = spacingMs * Math.max(fireworks.length - 1, 0);
+  const launchAndBloomMs =
+    (params.launchDuration + params.bloomDuration + params.fireworkDuration) *
+    1000;
+  return Math.max(sequentialSpanMs + launchAndBloomMs, 1000);
+};
+
+const startFireworksIdleLoop = () => {
+  if (fireworks.length === 0) {
+    return;
+  }
+  stopFireworksIdleLoop();
+  isFireworksIdleLooping = true;
+  setFireworksVisibility(true);
+  const loopDurationMs = getFireworksLoopDurationMs();
+  const loop = () => {
+    if (!isFireworksIdleLooping) {
+      return;
+    }
+    scheduleFireworksSequentially();
+    resetFireworksStartTimes();
+    fireworksIdleLoopTimeoutId = window.setTimeout(loop, loopDurationMs);
+  };
+  loop();
+};
+
+startFireworksIdleLoop();
 
 const highlightState = {
   feature: undefined,
@@ -1018,12 +1075,18 @@ const stopTimelineProgressAnimation = ({
   }
   isTimelineProgressPlaying = false;
   setTimelinePlayButtonState(false);
+  if (!isTimelineLooping) {
+    startFireworksIdleLoop();
+    setFireworksVisibility(true);
+  }
 };
 
 const startTimelineProgressAnimation = ({ loop = false, onLoop } = {}) => {
   if (!timelineProgressInput) {
     return;
   }
+  stopFireworksIdleLoop();
+  setFireworksVisibility(false);
   const { min, max, span } = getTimelineProgressBounds(timelineProgressInput);
   const currentValue = parseRangeValue(timelineProgressInput.value, min);
   let clampedStartValue = Math.max(min, Math.min(max, currentValue));

@@ -267,8 +267,9 @@ export default class FireworkManager {
       if (!uniforms) {
         return;
       }
+      const startDelayMs = Math.max(firework.startDelayMs || 0, 0);
       const elapsedMs = Math.max(
-        nowMs - firework.startTime - pausedOffsetMs,
+        nowMs - firework.startTime - startDelayMs - pausedOffsetMs,
         0
       );
       const elapsedSeconds = elapsedMs * 0.001;

@@ -13,7 +13,7 @@ export const fireWorkCategory = {
 export const params = {
   category: fireWorkCategory.kiku,
   numberOfParticles: 400,
-  pointSize: 4.0,
+  pointSize: 10.0,
   radius: 800,
   fireworkColor: "#ffd256",
   launchDuration: 2.0,
@@ -120,6 +120,6 @@ export const timelineModeLabels = {
   burst: "連発",
 };
 
-export const timelinePlaybackDurationMs = 75000;
+export const timelinePlaybackDurationMs = 7500;
 
 export const roofViewOffsetMeters = 20.0;
