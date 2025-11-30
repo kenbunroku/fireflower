@@ -729,9 +729,13 @@ button {
   align-items: center;
   justify-content: center;
   border-radius: 24px;
+  background-image: none;
+}
+
+.timeline-card-wrapper.is-progressing {
   background-image: conic-gradient(
-    transparent calc(var(--progress, 3) * 1%),
-    var(--outline, white) calc(var(--progress, 3) * 1%)
+    transparent calc(var(--progress, 0) * 1%),
+    var(--outline, white) calc(var(--progress, 0) * 1%)
   );
 }
 
