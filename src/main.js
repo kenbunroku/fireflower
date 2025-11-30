@@ -149,12 +149,12 @@ viewer = new Cesium.Viewer("cesiumContainer", {
   geocoder: false,
 });
 
+const mapboxAccessToken = import.meta.env?.VITE_MAPBOX_ACCESS_TOKEN;
 viewer.imageryLayers.removeAll();
 viewer.imageryLayers.addImageryProvider(
   new Cesium.MapboxStyleImageryProvider({
     styleId: "navigation-night-v1",
-    accessToken:
-      "pk.eyJ1Ijoia2VuYnVucm9rdSIsImEiOiJja2tpOHp4eGowdnJyMm9sYXIzNWlhMW4xIn0.a7YDf4bxzPQeM1_wSRC0TA",
+    accessToken: mapboxAccessToken,
   })
 );
 
