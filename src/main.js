@@ -6,6 +6,20 @@ import { Pane } from "tweakpane";
 
 import FireworkManager from "./FireworkManager";
 import { rotatePositionsAroundX } from "./util.js";
+import {
+  category,
+  defaultFireworkColorKey,
+  fireWorkCategory,
+  fireworkColorPresets,
+  isDebugMode,
+  location,
+  maxTimelineSelections,
+  params,
+  roofViewOffsetMeters,
+  timelineModeIcons,
+  timelineModeLabels,
+  timelinePlaybackDurationMs,
+} from "./constant.js";
 
 const cesiumAccessToken = import.meta.env?.VITE_CESIUM_ACCESS_TOKEN;
 if (!cesiumAccessToken) {
@@ -15,8 +29,6 @@ if (!cesiumAccessToken) {
 } else {
   Cesium.Ion.defaultAccessToken = cesiumAccessToken;
 }
-
-const isDebugMode = true;
 
 // Loaders
 const dracoLoader = new DRACOLoader();
@@ -76,115 +88,9 @@ const gltfModels = {
   },
 };
 
-const fireWorkCategory = {
-  kiku: "菊",
-  botan: "牡丹",
-  meshibe: "めしべ",
-  poka: "ポカ物",
-  kanmukiku: "冠菊",
-  heart: "ハート",
-  love: "告白",
-};
-
-const params = {
-  category: fireWorkCategory.kiku,
-  numberOfParticles: 400,
-  pointSize: 4.0,
-  radius: 800,
-  fireworkColor: "#ffd256",
-  launchDuration: 2.0,
-  bloomDuration: 2.0,
-  fireworkDuration: 2.0,
-  times: 30,
-  gravityStrength: 1,
-  buildingColor: "#5fd4ff",
-  buildingOpacity: 0.7,
-  launchOffsetRangeMeters: 100.0,
-  height: 200,
-  delay: 0.005,
-  interval: 1.0,
-};
-
-const category = {
-  kiku: {
-    numberOfParticles: 400,
-    pointSize: 4.0,
-    radius: 800,
-    bloomDuration: 2,
-    times: 30,
-    gravityStrength: 1,
-  },
-  botan: {
-    numberOfParticles: 400,
-    pointSize: 4.0,
-    radius: 800,
-    bloomDuration: 2,
-    times: 10,
-    gravityStrength: 1,
-  },
-  meshibe: {
-    numberOfParticles: 400,
-    pointSize: 4.0,
-    radius: 800,
-    bloomDuration: 3,
-    times: 100,
-    gravityStrength: 1,
-  },
-  kanmukiku: {
-    numberOfParticles: 400,
-    pointSize: 4.0,
-    radius: 800,
-    bloomDuration: 3,
-    times: 100,
-    gravityStrength: 1,
-  },
-  poka: {
-    numberOfParticles: 400,
-    pointSize: 4.0,
-    radius: 200,
-    bloomDuration: 3,
-    times: 100,
-    gravityStrength: 4,
-  },
-  heart: {
-    numberOfParticles: 0,
-    pointSize: 4.0,
-    radius: 50,
-    bloomDuration: 2,
-    times: 1,
-    gravityStrength: 1,
-  },
-  love: {
-    numberOfParticles: 0,
-    pointSize: 4.0,
-    radius: 50,
-    bloomDuration: 2,
-    times: 1,
-    gravityStrength: 1,
-  },
-};
-
-const fireworkColorPresets = {
-  hotPink: { hex: "#ff4181", secondary: "#fdc322" },
-  yellow: { hex: "#fdc322", secondary: "#4483f9" },
-  pink: { hex: "#ffa6ea", secondary: "#ecf1ff" },
-  purple: { hex: "#8775ff", secondary: "#4effc1" },
-  orange: { hex: "#ff8c4e", secondary: "#9788ff" },
-  red: { hex: "#e00100", secondary: "#ffe0af" },
-  green: { hex: "#00de0b", secondary: "#ff7bdf" },
-  cream: { hex: "#ffe0af", secondary: "#ff6c1d" },
-  white: { hex: "#ecf1ff", secondary: "#5bcf21" },
-};
-const defaultFireworkColorKey = "hotPink";
-
 let viewer, scene;
 let bloom;
 
-const location = {
-  lat: 35.716833,
-  lng: 139.805278,
-  height: 250,
-};
 const modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(
   Cesium.Cartesian3.fromDegrees(location.lng, location.lat)
 );
@@ -462,7 +368,6 @@ function setResetCameraButtonVisible(isVisible) {
 }
 
 setResetCameraButtonVisible(false);
-const roofViewOffsetMeters = 20.0;
 const roofCartographicScratch = new Cesium.Cartographic();
 const roofPositionScratch = new Cesium.Cartesian3();
 const cameraDirectionScratch = new Cesium.Cartesian3();
@@ -751,15 +656,6 @@ if (fireworkCategoryCards.length > 0) {
 const timelineSelections = [];
 const timelineSelectedFireworks = [];
 
-const maxTimelineSelections = 9;
-const timelineModeIcons = {
-  solo: "bolt",
-  burst: "auto_awesome",
-};
-const timelineModeLabels = {
-  solo: "単発",
-  burst: "連発",
-};
 const defaultModeTab = document.querySelector(".panel-tab.is-active");
 let activeMode = defaultModeTab?.dataset.mode ?? "solo";
 const burstTypeSection = document.querySelector('[data-section="burst-type"]');
@@ -909,7 +805,6 @@ const timelineProgressInput = timelineProgressContainer?.querySelector(
   'input[type="range"]'
 );
 const timelinePlayButton = document.querySelector(".timeline-play");
-const timelinePlaybackDurationMs = 10000;
 let timelineProgressAnimationId;
 let isTimelineProgressPlaying = false;
 let isTimelineSequenceActive = false;
@@ -1329,111 +1224,3 @@ function animate() {
 }
 
 animate();
-
-const createDebugPane = () => {
-  const pane = new Pane();
-  pane.addBinding(params, "category", {
-    options: fireWorkCategory,
-  });
-
-  pane
-    .addBinding(params, "numberOfParticles", {
-      min: 100,
-      max: 1000,
-      step: 10,
-    })
-    .on("change", (event) => {
-      fireworkManager.createFirework({
-        numberOfParticles: event.value,
-      });
-    });
-
-  fireworkColorBinding = pane
-    .addBinding(params, "fireworkColor")
-    .on("change", (event) => {
-      updateFireworkColors(event.value);
-    });
-
-  pane
-    .addBinding(params, "pointSize", {
-      min: 0.1,
-      max: 10,
-    })
-    .on("change", (event) => {
-      fireworks.forEach((firework) => {
-        firework.appearance.uniforms.u_pointSize = event.value;
-      });
-    });
-
-  pane
-    .addBinding(params, "radius", {
-      min: 10,
-      max: 500,
-    })
-    .on("change", (event) => {
-      fireworks.forEach((firework) => {
-        firework.appearance.uniforms.u_radius = event.value;
-      });
-    });
-
-  pane
-    .addBinding(params, "launchDuration", {
-      min: 0.1,
-      max: 10,
-    })
-    .on("change", (event) => {
-      fireworks.forEach((firework) => {
-        firework.appearance.uniforms.u_duration = event.value;
-      });
-    });
-
-  pane
-    .addBinding(params, "bloomDuration", {
-      min: 0.1,
-      max: 10,
-    })
-    .on("change", (event) => {
-      fireworks.forEach((firework) => {
-        firework.appearance.uniforms.u_bloomDuration = event.value;
-      });
-    });
-
-  pane.addBinding(params, "fireworkDuration", {
-    min: 1,
-    max: 60,
-  });
-
-  pane.addBinding(params, "times", {
-    min: 1,
-    max: 100,
-    step: 1,
-  });
-
-  pane.addBinding(params, "buildingColor").on("change", (event) => {
-    const colorHex = event.value;
-    Cesium.Color.fromCssColorString(colorHex, buildingSilhouetteColor);
-    buildingTilesets.forEach((tileset) => {
-      applyBuildingStyle(tileset);
-    });
-    if (buildingSilhouetteStage) {
-      buildingSilhouetteStage.uniforms.color = Cesium.Color.clone(
-        buildingSilhouetteColor,
-        new Cesium.Color()
-      );
-    }
-  });
-
-  pane
-    .addBinding(params, "buildingOpacity", {
-      min: 0.0,
-      max: 1.0,
-    })
-    .on("change", (event) => {
-      const opacity = event.value;
-      buildingTilesets.forEach((tileset) => {
-        applyBuildingStyle(tileset);
-      });
-    });
-};
-
-// if (isDebugMode) createDebugPane();
