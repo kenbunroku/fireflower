@@ -783,9 +783,22 @@ if (fireworkCategoryCards.length > 0) {
 
 const timelineSelections = [];
 const timelineSelectedFireworks = [];
+let activeTimelineSelectionIndex;
+let deleteFireworkButton;
+const updateDeleteButtonVisibility = () => {
+  if (!deleteFireworkButton) {
+    return;
+  }
+  deleteFireworkButton.style.display = Number.isFinite(
+    activeTimelineSelectionIndex
+  )
+    ? ""
+    : "none";
+};
 
 const defaultModeTab = document.querySelector(".panel-tab.is-active");
 let activeMode = defaultModeTab?.dataset.mode ?? "solo";
+const modeTabs = document.querySelectorAll(".panel-tab");
 const burstTypeSection = document.querySelector('[data-section="burst-type"]');
 const burstTypeCards = Array.from(
   document.querySelectorAll(
@@ -831,22 +844,92 @@ if (burstTypeCards.length > 0) {
   });
 }
 updateBurstTypeAvailability();
+const setActiveMode = (mode) => {
+  if (!mode) {
+    return;
+  }
+  activeMode = mode;
+  modeTabs.forEach((tab) => {
+    tab.classList.toggle("is-active", tab.dataset.mode === mode);
+  });
+  updateBurstTypeAvailability();
+};
 const timelinePanel = document.querySelector(".timeline-panel");
 const timelineCarousel = document.getElementById("timelineCarousel");
+const timelineClearButton = document.getElementById("timelineClearButton");
+const updateTimelineClearButtonVisibility = () => {
+  if (!timelineClearButton) {
+    return;
+  }
+  timelineClearButton.style.display = timelineSelections.length > 0 ? "" : "none";
+};
 const updateTimelinePanelVisibility = () => {
   if (!timelinePanel) {
     return;
   }
   timelinePanel.style.display = timelineSelections.length === 0 ? "none" : "";
+  updateTimelineClearButtonVisibility();
 };
 updateTimelinePanelVisibility();
 let timelineCards = timelineCarousel
   ? Array.from(timelineCarousel.querySelectorAll(".timeline-card"))
   : [];
+const applySelectionToSidebar = (selection) => {
+  if (!selection) {
+    return;
+  }
+  if (selection.mode) {
+    setActiveMode(selection.mode);
+  }
+  if (selection.burstType) {
+    activeBurstTypeKey = selection.burstType;
+    setActiveBurstTypeCard(activeBurstTypeKey);
+  }
+  if (selection.fireworkType) {
+    setActiveFireworkCategory(selection.fireworkType);
+  }
+  const colorKeyOrHex =
+    selection.fireworkColorKey ?? selection.fireworkColor ?? undefined;
+  if (colorKeyOrHex) {
+    updateFireworkColors(colorKeyOrHex);
+  }
+  if (Number.isFinite(selection.launchHeight)) {
+    if (heightSlider) {
+      heightSlider.value = String(selection.launchHeight);
+    }
+    syncHeightValue(selection.launchHeight);
+  }
+};
 const setActiveTimelineCard = (targetCard) => {
   timelineCards.forEach((card) => {
     card.classList.toggle("is-active", card === targetCard);
   });
+  activeTimelineSelectionIndex = undefined;
+  if (targetCard?.dataset.selectionIndex) {
+    const selectionIndex = Number(targetCard.dataset.selectionIndex);
+    const selection = timelineSelections[selectionIndex];
+    if (Number.isFinite(selectionIndex)) {
+      activeTimelineSelectionIndex = selectionIndex;
+    }
+    applySelectionToSidebar(selection);
+  }
+  updateDeleteButtonVisibility();
+  updateAddFireworkButtonLabel();
+  updateTimelineClearButtonVisibility();
+};
+const ensureTimelineCardEditIcon = (card) => {
+  if (!card) {
+    return undefined;
+  }
+  const existing = card.querySelector(".timeline-card__edit");
+  if (existing) {
+    return existing;
+  }
+  const editIcon = document.createElement("span");
+  editIcon.className = "material-icons-outlined timeline-card__edit";
+  editIcon.textContent = "edit";
+  card.appendChild(editIcon);
+  return editIcon;
 };
 const handleTimelineCardClick = (card) => {
   setActiveTimelineCard(card);
@@ -875,6 +958,13 @@ const registerTimelineCard = (card) => {
   if (!card) {
     return;
   }
+  const editIcon = ensureTimelineCardEditIcon(card);
+  if (editIcon) {
+    editIcon.addEventListener("click", (event) => {
+      event.stopPropagation();
+      handleTimelineCardClick(card);
+    });
+  }
   card.addEventListener("click", () => handleTimelineCardClick(card));
 };
 const addTimelineCard = ({
@@ -883,6 +973,8 @@ const addTimelineCard = ({
   launchHeight,
   fireworkColorKey,
   mode,
+  burstType,
+  selectionIndex,
 }) => {
   if (!timelineCarousel) {
     return;
@@ -894,6 +986,12 @@ const addTimelineCard = ({
   card.dataset.launchHeight = String(launchHeight);
   if (mode) {
     card.dataset.mode = mode;
+  }
+  if (burstType) {
+    card.dataset.burstType = burstType;
+  }
+  if (Number.isFinite(selectionIndex)) {
+    card.dataset.selectionIndex = String(selectionIndex);
   }
   const title = document.createElement("span");
   title.className = "timeline-card__title";
@@ -921,7 +1019,50 @@ const addTimelineCard = ({
   timelineCarousel.appendChild(card);
   timelineCards.push(card);
   registerTimelineCard(card);
-  setActiveTimelineCard(card);
+};
+
+const updateTimelineCard = (card, selection, selectionIndex) => {
+  if (!card || !selection) {
+    return;
+  }
+  card.dataset.fireworkType = selection.fireworkType;
+  card.dataset.fireworkColor = selection.fireworkColorKey;
+  card.dataset.launchHeight = String(selection.launchHeight);
+  if (selection.mode) {
+    card.dataset.mode = selection.mode;
+  }
+  if (selection.burstType) {
+    card.dataset.burstType = selection.burstType;
+  } else {
+    delete card.dataset.burstType;
+  }
+  if (Number.isFinite(selectionIndex)) {
+    card.dataset.selectionIndex = String(selectionIndex);
+  }
+  const colorIndicator = card.querySelector(".timeline-card__color");
+  if (colorIndicator) {
+    colorIndicator.style.backgroundColor =
+      selection.fireworkColor ||
+      fireworkColorPresets[selection.fireworkColorKey]?.hex ||
+      "#fff";
+    const modeLabel =
+      (selection.mode && timelineModeLabels[selection.mode]) ||
+      timelineModeLabels.solo;
+    const colorLabel = fireworkColorPresets[selection.fireworkColorKey]
+      ? selection.fireworkColorKey
+      : selection.fireworkColor?.toUpperCase() || "CUSTOM";
+    colorIndicator.title = modeLabel;
+    colorIndicator.setAttribute(
+      "aria-label",
+      `${modeLabel} / ${colorLabel}`
+    );
+    const icon = colorIndicator.querySelector(".timeline-card__color-icon");
+    if (icon) {
+      icon.textContent =
+        (selection.mode && timelineModeIcons[selection.mode]) ||
+        timelineModeIcons.solo;
+    }
+  }
 };
 
 if (timelineCards.length > 0) {
@@ -1280,9 +1421,31 @@ const updateAddFireworkButtonState = () => {
   addFireworkButton.disabled =
     timelineSelections.length >= maxTimelineSelections;
 };
+const updateAddFireworkButtonLabel = () => {
+  if (!addFireworkButton) {
+    return;
+  }
+  addFireworkButton.textContent = Number.isFinite(activeTimelineSelectionIndex)
+    ? "この設定で保存"
+    : "+ この設定で花火を追加";
+};
+if (addFireworkButton) {
+  deleteFireworkButton = document.createElement("button");
+  deleteFireworkButton.id = "deleteFireworkButton";
+  deleteFireworkButton.type = "button";
+  deleteFireworkButton.className = "panel-cta panel-cta--danger";
+  deleteFireworkButton.textContent = "この設定を削除";
+  deleteFireworkButton.style.display = "none";
+  addFireworkButton.insertAdjacentElement("afterend", deleteFireworkButton);
+  updateDeleteButtonVisibility();
+  updateAddFireworkButtonLabel();
+}
 
 addFireworkButton.addEventListener("click", () => {
-  if (timelineSelections.length >= maxTimelineSelections) {
+  if (
+    activeTimelineSelectionIndex === undefined &&
+    timelineSelections.length >= maxTimelineSelections
+  ) {
     return;
   }
 
@@ -1301,7 +1464,7 @@ addFireworkButton.addEventListener("click", () => {
     bloomDuration: category[activeFireworkCategoryKey].bloomDuration,
     fireworkType: activeFireworkCategoryKey,
     fireworkColor: fireworkColorHex,
-    fireworkColorKey: activeFireworkCategoryKey,
+    fireworkColorKey: activeFireworkColorKey,
     secondary:
       activeFireworkCategoryKey === "botan" ||
       activeFireworkCategoryKey === "meshibe"
@@ -1313,23 +1476,99 @@ addFireworkButton.addEventListener("click", () => {
     mode: activeMode,
     burstType: isBurstTypeEnabled() ? activeBurstTypeKey : undefined,
   };
-  timelineSelections.push(selection);
+  // 編集モード中は既存の選択を上書き
+  if (Number.isFinite(activeTimelineSelectionIndex)) {
+    timelineSelections[activeTimelineSelectionIndex] = selection;
+    const targetCard = timelineCards.find(
+      (card) =>
+        Number(card.dataset.selectionIndex) === activeTimelineSelectionIndex
+    );
+    updateTimelineCard(targetCard, selection, activeTimelineSelectionIndex);
+    setActiveTimelineCard(targetCard);
+  } else {
+    timelineSelections.push(selection);
+    addTimelineCard({
+      ...selection,
+      selectionIndex: timelineSelections.length - 1,
+    });
+    updateTimelinePanelVisibility();
+  }
 
-  updateTimelinePanelVisibility();
-  addTimelineCard(selection);
   updateAddFireworkButtonState();
+  updateDeleteButtonVisibility();
+  updateAddFireworkButtonLabel();
+  updateTimelineClearButtonVisibility();
 });
 
-const modeTabs = document.querySelectorAll(".panel-tab");
+const reindexTimelineCards = () => {
+  timelineCards.forEach((card, index) => {
+    card.dataset.selectionIndex = String(index);
+  });
+};
+
+if (deleteFireworkButton) {
+  deleteFireworkButton.addEventListener("click", () => {
+    if (!Number.isFinite(activeTimelineSelectionIndex)) {
+      return;
+    }
+    const deleteIndex = activeTimelineSelectionIndex;
+    timelineSelections.splice(deleteIndex, 1);
+    const targetCard = timelineCards.find(
+      (card) => Number(card.dataset.selectionIndex) === deleteIndex
+    );
+    if (targetCard) {
+      targetCard.remove();
+    }
+    timelineCards = timelineCards.filter(
+      (card) => Number(card.dataset.selectionIndex) !== deleteIndex
+    );
+    reindexTimelineCards();
+    activeTimelineSelectionIndex = undefined;
+    updateTimelinePanelVisibility();
+    updateAddFireworkButtonState();
+    updateDeleteButtonVisibility();
+    updateAddFireworkButtonLabel();
+    updateTimelineClearButtonVisibility();
+  });
+}
+
+const clearTimelineFireworkPrimitives = () => {
+  timelineSelectedFireworks.forEach((firework) => {
+    if (firework?.primitive && !firework.primitive.isDestroyed?.()) {
+      scene.primitives.remove(firework.primitive);
+    }
+  });
+  timelineSelectedFireworks.length = 0;
+};
+
+const clearTimelineData = () => {
+  stopTimelineProgressAnimation({ reset: true });
+  stopTimelinePlaybackSequence();
+  clearTimelineFireworkPrimitives();
+  timelineSelections.length = 0;
+  timelineCards.forEach((card) => card.remove());
+  timelineCards = [];
+  if (timelineCarousel) {
+    timelineCarousel.innerHTML = "";
+  }
+  activeTimelineSelectionIndex = undefined;
+  updateTimelinePanelVisibility();
+  updateAddFireworkButtonState();
+  updateDeleteButtonVisibility();
+  updateAddFireworkButtonLabel();
+  updateTimelineClearButtonVisibility();
+};
+
+if (timelineClearButton) {
+  timelineClearButton.addEventListener("click", clearTimelineData);
+}
+
 if (modeTabs.length > 0) {
   modeTabs.forEach((tab) => {
     tab.addEventListener("click", () => {
-      modeTabs.forEach((peer) => peer.classList.remove("is-active"));
-      tab.classList.add("is-active");
       if (tab.dataset.mode) {
-        activeMode = tab.dataset.mode;
+        setActiveMode(tab.dataset.mode);
       }
-      updateBurstTypeAvailability();
     });
   });
 }

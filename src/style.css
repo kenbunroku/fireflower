@@ -626,6 +626,15 @@ button {
   box-shadow: none;
 }
 
+.panel-cta--danger {
+  background: linear-gradient(
+    92deg,
+    rgba(107, 22, 22, 0.65) 0%,
+    rgba(170, 36, 36, 0.85) 101.28%
+  );
+  box-shadow: 1px 1px 15px 0 rgba(255, 135, 135, 0.55) inset;
+}
+
 .timeline-panel {
   margin-top: auto;
   width: fit-content;
@@ -642,6 +651,7 @@ button {
   gap: 12px;
   --timeline-card-gap: 12px;
   --timeline-max-visible-cards: 9;
+  position: relative;
 }
 
 .timeline-panel__header {
@@ -671,6 +681,28 @@ button {
   flex-direction: column;
   gap: 12px;
   width: 100%;
+}
+
+.timeline-clear-button {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.timeline-clear-button:hover {
+  transform: translateY(-1px);
+}
+
+.timeline-clear-button .material-icons-outlined {
+  font-size: 22px;
 }
 
 .timeline-carousel {
@@ -712,6 +744,29 @@ button {
 
 .timeline-card.is-active {
   border-color: rgba(255, 255, 255, 0.8);
+}
+
+.material-icons-outlined.timeline-card__edit {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 16px;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 10px;
+  padding: 6px;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.timeline-card:hover .timeline-card__edit,
+.timeline-card.is-active .timeline-card__edit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.material-icons-outlined.timeline-card__edit:hover {
+  opacity: 1;
 }
 
 .timeline-card__color {
