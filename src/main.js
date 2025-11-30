@@ -149,6 +149,15 @@ viewer = new Cesium.Viewer("cesiumContainer", {
   geocoder: false,
 });
 
+viewer.imageryLayers.removeAll();
+viewer.imageryLayers.addImageryProvider(
+  new Cesium.MapboxStyleImageryProvider({
+    styleId: "navigation-night-v1",
+    accessToken:
+      "pk.eyJ1Ijoia2VuYnVucm9rdSIsImEiOiJja2tpOHp4eGowdnJyMm9sYXIzNWlhMW4xIn0.a7YDf4bxzPQeM1_wSRC0TA",
+  })
+);
+
 const controlPanelButtons = document.querySelector(".control-panel__buttons");
 const fullscreenContainer =
   viewer?.fullscreenButton?.container ||
@@ -194,6 +203,33 @@ const buildingSilhouetteColor = Cesium.Color.fromCssColorString(
 );
 buildingSilhouetteColor.alpha = 1.0;
 
+// Buildings load a lot of tiles; keep the budget small and let Cesium skip to coarser LODs.
+const tilesetPerformanceOptions = {
+  maximumScreenSpaceError: 32,
+  dynamicScreenSpaceError: true,
+  dynamicScreenSpaceErrorFactor: 2.5,
+  dynamicScreenSpaceErrorDensity: 0.0025,
+  skipLevelOfDetail: true,
+  baseScreenSpaceError: 1024,
+  skipScreenSpaceErrorFactor: 16,
+  skipLevels: 1,
+  maximumNumberOfLoadedTiles: 256,
+  maximumMemoryUsage: 256,
+  cullRequestsWhileMoving: true,
+  cullRequestsWhileMovingMultiplier: 10.0,
+};
+
+const applyTilesetPerformanceTuning = (tileset) => {
+  if (!tileset) {
+    return;
+  }
+  Object.entries(tilesetPerformanceOptions).forEach(([key, value]) => {
+    if (key in tileset) {
+      tileset[key] = value;
+    }
+  });
+};
+
 const applyBuildingStyle = (tileset) => {
   tileset.style = new Cesium.Cesium3DTileStyle({
     color: `vec4(
@@ -238,26 +274,49 @@ viewer.clock.currentTime = Cesium.JulianDate.fromIso8601(
   "2025-10-24T12:00:00Z"
 );
 
-try {
-  // 台東区のLOD2のビルデータを読み込む
-  const taito = await Cesium.Cesium3DTileset.fromUrl(
-    "https://assets.cms.plateau.reearth.io/assets/59/0fbb20-59cb-4ce5-9d12-2273ce72e6d2/13106_taito-ku_city_2024_citygml_1_op_bldg_3dtiles_13106_taito-ku_lod2_no_texture/tileset.json"
-  );
-  applyBuildingStyle(taito);
-  registerBuildingForSilhouette(taito);
+const loadBuildingTilesets = async () => {
+  const startFireworksWhenVisible = (tileset) => {
+    const handleFirstVisibility = () => {
+      tileset.tileVisible.removeEventListener(handleFirstVisibility);
+      startInitialFireworks();
+    };
+    tileset.tileVisible.addEventListener(handleFirstVisibility);
+  };
 
-  // 墨田区のLOD2のビルデータを読み込む
-  const sumida = await Cesium.Cesium3DTileset.fromUrl(
-    "https://assets.cms.plateau.reearth.io/assets/5d/526931-ac09-44b4-a910-d2331d69c87a/13107_sumida-ku_city_2024_citygml_1_op_bldg_3dtiles_13107_sumida-ku_lod3_no_texture/tileset.json"
-  );
-  applyBuildingStyle(sumida);
-  registerBuildingForSilhouette(sumida);
+  try {
+    // 台東区のLOD2のビルデータを読み込む
+    const taito = await Cesium.Cesium3DTileset.fromUrl(
+      "https://assets.cms.plateau.reearth.io/assets/59/0fbb20-59cb-4ce5-9d12-2273ce72e6d2/13106_taito-ku_city_2024_citygml_1_op_bldg_3dtiles_13106_taito-ku_lod2_no_texture/tileset.json"
+    );
+    applyTilesetPerformanceTuning(taito);
+    applyBuildingStyle(taito);
+    registerBuildingForSilhouette(taito);
+    startFireworksWhenVisible(taito);
 
-  scene.primitives.add(taito);
-  scene.primitives.add(sumida);
-} catch (error) {
-  console.log(error);
-}
+    // 墨田区のLOD2のビルデータを読み込む
+    const sumida = await Cesium.Cesium3DTileset.fromUrl(
+      "https://assets.cms.plateau.reearth.io/assets/5d/526931-ac09-44b4-a910-d2331d69c87a/13107_sumida-ku_city_2024_citygml_1_op_bldg_3dtiles_13107_sumida-ku_lod3_no_texture/tileset.json"
+    );
+    applyTilesetPerformanceTuning(sumida);
+    applyBuildingStyle(sumida);
+    registerBuildingForSilhouette(sumida);
+    startFireworksWhenVisible(sumida);
+
+    scene.primitives.add(taito);
+    scene.primitives.add(sumida);
+  } catch (error) {
+    console.log(error);
+    startInitialFireworks();
+    return;
+  } finally {
+    if (!fireworksFallbackTimeoutId) {
+      fireworksFallbackTimeoutId = window.setTimeout(
+        startInitialFireworks,
+        8000
+      );
+    }
+  }
+};
 
 setup();
 
@@ -270,6 +329,8 @@ const fireworkManager = new FireworkManager({
   modelPositions: heartModelPositions,
 });
 const fireworks = [];
+let fireworksInitialized = false;
+let fireworksFallbackTimeoutId;
 
 const getPrimaryAppearance = () => fireworks[0]?.appearance;
 
@@ -338,9 +399,6 @@ const createRandomFireworks = (count = 5) => {
     createRandomFirework(delayMs);
   }
 };
-
-createRandomFireworks(5);
-
 const scheduleFireworksSequentially = () => {
   const spacingMs = Math.max(params.interval * 1500, 0);
   fireworks.forEach((firework, index) => {
@@ -406,7 +464,21 @@ const startFireworksIdleLoop = () => {
   loop();
 };
 
-startFireworksIdleLoop();
+const startInitialFireworks = () => {
+  if (fireworksInitialized) {
+    return;
+  }
+  if (fireworksFallbackTimeoutId) {
+    window.clearTimeout(fireworksFallbackTimeoutId);
+    fireworksFallbackTimeoutId = undefined;
+  }
+  createRandomFireworks(5);
+  scheduleFireworksSequentially();
+  startFireworksIdleLoop();
+  fireworksInitialized = true;
+};
+
+loadBuildingTilesets();
 
 const highlightState = {
   feature: undefined,
