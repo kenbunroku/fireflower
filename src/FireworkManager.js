@@ -260,16 +260,24 @@ export default class FireworkManager {
         : 0);
 
     fireworkArray.forEach((firework) => {
+      if (firework?.primitive && firework.primitive.show === false) {
+        return;
+      }
       if (!firework.startTime) {
         firework.startTime = nowMs;
+        firework.pauseOffsetAtStart = pausedOffsetMs;
       }
       const uniforms = firework.appearance?.uniforms;
       if (!uniforms) {
         return;
       }
       const startDelayMs = Math.max(firework.startDelayMs || 0, 0);
+      const accumulatedPauseForFirework = Math.max(
+        pausedOffsetMs - (firework.pauseOffsetAtStart || 0),
+        0
+      );
       const elapsedMs = Math.max(
-        nowMs - firework.startTime - startDelayMs - pausedOffsetMs,
+        nowMs - firework.startTime - startDelayMs - accumulatedPauseForFirework,
         0
       );
       const elapsedSeconds = elapsedMs * 0.001;
