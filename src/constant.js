@@ -31,7 +31,7 @@ export const params = {
 
 export const category = {
   kiku: {
-    numberOfParticles: 250,
+    numberOfParticles: 300,
     pointSize: 4.0,
     radius: 800,
     bloomDuration: 2,
@@ -39,7 +39,7 @@ export const category = {
     gravityStrength: 1,
   },
   botan: {
-    numberOfParticles: 250,
+    numberOfParticles: 300,
     pointSize: 4.0,
     radius: 800,
     bloomDuration: 2,
