@@ -120,6 +120,6 @@ export const timelineModeLabels = {
   burst: "連発",
 };
 
-export const timelinePlaybackDurationMs = 10000;
+export const timelinePlaybackDurationMs = 75000;
 
 export const roofViewOffsetMeters = 20.0;

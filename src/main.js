@@ -808,9 +808,10 @@ let timelineProgressAnimationId;
 let isTimelineProgressPlaying = false;
 let isTimelineSequenceActive = false;
 let timelineSequenceTimeoutId;
+let isTimelineLooping = false;
 const activeTimelineBurstStops = new Set();
 
-const stopTimelinePlaybackSequence = () => {
+const stopTimelinePlaybackSequence = ({ keepLooping = false } = {}) => {
   if (timelineSequenceTimeoutId) {
     window.clearTimeout(timelineSequenceTimeoutId);
     timelineSequenceTimeoutId = undefined;
@@ -824,6 +825,9 @@ const stopTimelinePlaybackSequence = () => {
   });
   activeTimelineBurstStops.clear();
   isTimelineSequenceActive = false;
+  if (!keepLooping) {
+    isTimelineLooping = false;
+  }
 };
 
 const triggerTimelineSelection = (selection) => {
@@ -877,21 +881,23 @@ const triggerTimelineSelection = (selection) => {
   }
 };
 
-const playTimelineSelectionsSequentially = () => {
-  if (timelineSelections.length === 0) {
+const playTimelineSelectionsSequentially = (
+  selections = timelineSelections,
+  { durationMs = timelinePlaybackDurationMs, onComplete } = {}
+) => {
+  if (selections.length === 0) {
     return;
   }
 
-  stopTimelinePlaybackSequence();
+  stopTimelinePlaybackSequence({ keepLooping: isTimelineLooping });
   isTimelineSequenceActive = true;
-  const delayMs =
-    timelinePlaybackDurationMs / Math.max(timelineSelections.length, 1);
+  const delayMs = durationMs / Math.max(selections.length, 1);
 
   const step = (index) => {
     if (!isTimelineSequenceActive) {
       return;
     }
-    const selection = timelineSelections[index];
+    const selection = selections[index];
     if (!selection) {
       return;
     }
@@ -932,8 +938,11 @@ const playTimelineSelectionsSequentially = () => {
       }
     }
 
-    if (index + 1 >= timelineSelections.length) {
+    if (index + 1 >= selections.length) {
       isTimelineSequenceActive = false;
+      if (typeof onComplete === "function") {
+        onComplete();
+      }
       return;
     }
 
@@ -990,12 +999,20 @@ const setTimelinePlayButtonState = (isPlaying) => {
   timelinePlayButton.setAttribute("aria-label", isPlaying ? "停止" : "再生");
 };
 
-const stopTimelineProgressAnimation = ({ reset = false } = {}) => {
+const stopTimelineProgressAnimation = ({
+  reset = false,
+  stopSequence = true,
+  keepLooping = false,
+} = {}) => {
   if (timelineProgressAnimationId) {
     cancelAnimationFrame(timelineProgressAnimationId);
     timelineProgressAnimationId = undefined;
   }
-  stopTimelinePlaybackSequence();
+  if (stopSequence) {
+    stopTimelinePlaybackSequence({ keepLooping });
+  } else if (!keepLooping) {
+    isTimelineLooping = false;
+  }
   if (reset) {
     resetTimelineProgress();
   }
@@ -1003,7 +1020,7 @@ const stopTimelineProgressAnimation = ({ reset = false } = {}) => {
   setTimelinePlayButtonState(false);
 };
 
-const startTimelineProgressAnimation = () => {
+const startTimelineProgressAnimation = ({ loop = false, onLoop } = {}) => {
   if (!timelineProgressInput) {
     return;
   }
@@ -1017,8 +1034,9 @@ const startTimelineProgressAnimation = () => {
   }
   const startOffsetMs =
     ((clampedStartValue - min) / span) * timelinePlaybackDurationMs;
-  stopTimelineProgressAnimation();
-  const animationStart = performance.now() - startOffsetMs;
+  stopTimelineProgressAnimation({ stopSequence: false, keepLooping: loop });
+  isTimelineLooping = loop;
+  let animationStart = performance.now() - startOffsetMs;
   isTimelineProgressPlaying = true;
   setTimelinePlayButtonState(true);
 
@@ -1029,6 +1047,17 @@ const startTimelineProgressAnimation = () => {
     timelineProgressInput.value = String(value);
     paintTimelineProgressTrack(value);
     if (ratio < 1) {
+      timelineProgressAnimationId = requestAnimationFrame(animate);
+      return;
+    }
+    if (loop && isTimelineProgressPlaying) {
+      const resetValue = min;
+      timelineProgressInput.value = String(resetValue);
+      paintTimelineProgressTrack(resetValue);
+      if (typeof onLoop === "function") {
+        onLoop();
+      }
+      animationStart = now;
       timelineProgressAnimationId = requestAnimationFrame(animate);
       return;
     }
@@ -1051,9 +1080,22 @@ timelinePlayButton.addEventListener("click", () => {
     return;
   }
 
-  startTimelineProgressAnimation();
+  const restartTimelineSequence = () => {
+    if (!isTimelineLooping) {
+      return;
+    }
+    stopTimelinePlaybackSequence({ keepLooping: true });
+    playTimelineSelectionsSequentially(timelineSelections);
+  };
 
-  playTimelineSelectionsSequentially();
+  isTimelineLooping = true;
+  stopTimelinePlaybackSequence({ keepLooping: true });
+  restartTimelineSequence();
+
+  startTimelineProgressAnimation({
+    loop: true,
+    onLoop: restartTimelineSequence,
+  });
 });
 
 if (timelineProgressInput) {
