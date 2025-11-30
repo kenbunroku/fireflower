@@ -1105,10 +1105,6 @@ if (timelineCards.length > 0) {
   timelineCards.forEach(registerTimelineCard);
 }
 
-const timelineProgressContainer = document.querySelector(".timeline-progress");
-const timelineProgressInput = timelineProgressContainer?.querySelector(
-  'input[type="range"]'
-);
 const timelinePlayButton = document.querySelector(".timeline-play");
 let timelineProgressAnimationId;
 let isTimelineProgressPlaying = false;
@@ -1123,11 +1119,8 @@ const resetAllTimelineCardProgress = () => {
   timelineCards.forEach((card) => resetTimelineCardWrapperProgress(card));
 };
 
-const updateTimelineCardProgress = (
-  value,
-  { min, span } = getTimelineProgressBounds(timelineProgressInput)
-) => {
-  if (!timelineProgressInput || timelineCards.length === 0) {
+const updateTimelineCardProgress = (value, { min = 0, span = 1 } = {}) => {
+  if (timelineCards.length === 0) {
     return;
   }
   const normalized = Math.max(0, Math.min(1, (value - min) / span));
@@ -1303,42 +1296,6 @@ const playTimelineSelectionsSequentially = (
   step(0);
 };
 
-const parseRangeValue = (value, fallback) => {
-  const numericValue = Number(value);
-  return Number.isFinite(numericValue) ? numericValue : fallback;
-};
-
-const getTimelineProgressBounds = (input) => {
-  const min = parseRangeValue(input.min, 0);
-  const max = parseRangeValue(input.max, 100);
-  const span = Math.max(max - min, 1);
-  return { min, max, span };
-};
-
-const resetTimelineProgress = () => {
-  if (!timelineProgressInput) {
-    return;
-  }
-  const { min } = getTimelineProgressBounds(timelineProgressInput);
-  timelineProgressInput.value = String(min);
-  timelineProgressInput.style.removeProperty("background");
-  resetAllTimelineCardProgress();
-};
-
-const paintTimelineProgressTrack = (value) => {
-  if (!timelineProgressInput) {
-    return;
-  }
-  const { min, span } = getTimelineProgressBounds(timelineProgressInput);
-  const percent = ((value - min) / span) * 100;
-  if (percent <= 0) {
-    timelineProgressInput.style.removeProperty("background");
-    return;
-  }
-  const clampedPercent = Math.max(0, Math.min(100, percent));
-  timelineProgressInput.style.background = `linear-gradient(90deg, #ffffff 0%, #ffffff ${clampedPercent}%, rgba(255, 255, 255, 0.15) ${clampedPercent}%, rgba(255, 255, 255, 0.15) 100%)`;
-};
-
 const setTimelinePlayButtonState = (isPlaying) => {
   if (!timelinePlayButton) {
     return;
@@ -1363,7 +1320,7 @@ const stopTimelineProgressAnimation = ({
     isTimelineLooping = false;
   }
   if (reset) {
-    resetTimelineProgress();
+    resetAllTimelineCardProgress();
   }
   isTimelineProgressPlaying = false;
   setTimelinePlayButtonState(false);
@@ -1374,44 +1331,24 @@ const stopTimelineProgressAnimation = ({
 };
 
 const startTimelineProgressAnimation = ({ loop = false, onLoop } = {}) => {
-  if (!timelineProgressInput) {
-    return;
-  }
   stopFireworksIdleLoop();
   setFireworksVisibility(false);
-  const { min, max, span } = getTimelineProgressBounds(timelineProgressInput);
-  const currentValue = parseRangeValue(timelineProgressInput.value, min);
-  let clampedStartValue = Math.max(min, Math.min(max, currentValue));
-  if (clampedStartValue >= max) {
-    clampedStartValue = min;
-    timelineProgressInput.value = String(min);
-    timelineProgressInput.style.removeProperty("background");
-  }
-  const startOffsetMs =
-    ((clampedStartValue - min) / span) * timelinePlaybackDurationMs;
   resetAllTimelineCardProgress();
-  updateTimelineCardProgress(clampedStartValue, { min, span });
   stopTimelineProgressAnimation({ stopSequence: false, keepLooping: loop });
   isTimelineLooping = loop;
-  let animationStart = performance.now() - startOffsetMs;
+  let animationStart = performance.now();
   isTimelineProgressPlaying = true;
   setTimelinePlayButtonState(true);
 
   const animate = (now) => {
     const elapsed = now - animationStart;
     const ratio = Math.min(elapsed / timelinePlaybackDurationMs, 1);
-    const value = min + ratio * span;
-    timelineProgressInput.value = String(value);
-    paintTimelineProgressTrack(value);
-    updateTimelineCardProgress(value, { min, span });
+    updateTimelineCardProgress(ratio, { min: 0, span: 1 });
     if (ratio < 1) {
       timelineProgressAnimationId = requestAnimationFrame(animate);
       return;
     }
     if (loop && isTimelineProgressPlaying) {
-      const resetValue = min;
-      timelineProgressInput.value = String(resetValue);
-      paintTimelineProgressTrack(resetValue);
       if (typeof onLoop === "function") {
         onLoop();
       }
@@ -1455,18 +1392,6 @@ timelinePlayButton.addEventListener("click", () => {
     onLoop: restartTimelineSequence,
   });
 });
-
-  if (timelineProgressInput) {
-    timelineProgressInput.addEventListener("input", (event) => {
-      const target = event.target;
-      if (!(target instanceof HTMLInputElement)) {
-        return;
-      }
-      const numericValue = Number(target.value);
-      paintTimelineProgressTrack(numericValue);
-      updateTimelineCardProgress(numericValue);
-    });
-  }
 
 const heightSlider = document.getElementById("heightSlider");
 const heightValue = document.getElementById("heightValue");
