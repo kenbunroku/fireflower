@@ -38,5 +38,5 @@ void main() {
   p.xyz = newP;
 
   gl_Position = czm_modelViewProjectionRelativeToEye * vec4(p.xyz, 1.);
-  gl_PointSize = u_pointSize * (1. - delay * 1.);
+  gl_PointSize = u_pointSize * (1. - delay * 2.);
 }
