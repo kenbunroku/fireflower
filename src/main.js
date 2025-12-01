@@ -1545,6 +1545,7 @@ const setTimelinePlayButtonState = (isPlaying) => {
   const iconName = isPlaying ? "stop" : "play_arrow";
   timelinePlayButton.innerHTML = `<span class="material-icons">${iconName}</span>`;
   timelinePlayButton.setAttribute("aria-label", isPlaying ? "停止" : "再生");
+  timelinePlayButton.classList.toggle("is-playing", isPlaying);
 };
 
 const stopTimelineProgressAnimation = ({
@@ -1685,7 +1686,8 @@ if (addFireworkButton) {
   deleteFireworkButton.id = "deleteFireworkButton";
   deleteFireworkButton.type = "button";
   deleteFireworkButton.className = "panel-cta panel-cta--danger";
-  deleteFireworkButton.textContent = "この設定を削除";
+  deleteFireworkButton.innerHTML =
+    '<span class="material-icons-outlined" aria-hidden="true">delete</span><span>この設定を削除</span>';
   deleteFireworkButton.style.display = "none";
   addFireworkButton.insertAdjacentElement("afterend", deleteFireworkButton);
   updateDeleteButtonVisibility();

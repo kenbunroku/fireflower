@@ -647,12 +647,19 @@ button {
 }
 
 .panel-cta--danger {
-  background: linear-gradient(
-    92deg,
-    rgba(107, 22, 22, 0.65) 0%,
-    rgba(170, 36, 36, 0.85) 101.28%
-  );
-  box-shadow: 1px 1px 15px 0 rgba(255, 135, 135, 0.55) inset;
+  background: rgba(255, 255, 255, 0.15) 0%;
+  box-shadow: 1px 1px 15px 0 rgba(255, 255, 255, 0.55) inset;
+}
+
+#deleteFireworkButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+#deleteFireworkButton .material-icons-outlined {
+  font-size: 18px;
 }
 
 .timeline-panel {
@@ -683,16 +690,36 @@ button {
 .timeline-play {
   width: 32px;
   height: 32px;
-  border-radius: 4px;
-  border: none;
+  border-radius: 8px;
+  border: 2px solid rgb(255, 255, 255, 0.5);
   font-size: 1.1rem;
   cursor: pointer;
-  color: #0f1320;
-  background: #fff;
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+  color: #fff;
+  background: rgba(22, 55, 107, 0.5);
+  box-shadow: 1px 1px 15px 0 rgba(135, 117, 255, 0.6) inset;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.timeline-play:hover,
+.timeline-play:focus-visible {
+  background: #fff;
+  background-blend-mode: multiply;
+  box-shadow: 0 0 20px 0 rgba(0, 0, 0, 0.25);
+  color: #16376b;
+  outline: none;
+}
+
+.timeline-play.is-playing,
+.timeline-play:active {
+  border: 0.5px solid rgba(255, 255, 255, 0.5);
+  background: #fff;
+  background-blend-mode: multiply;
+  box-shadow: none;
+  color: #16376b;
 }
 
 .timeline-panel__body {
