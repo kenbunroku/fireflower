@@ -29,6 +29,8 @@ if (!cesiumAccessToken) {
   Cesium.Ion.defaultAccessToken = cesiumAccessToken;
 }
 
+let isRandomFireworkOnLaunch = true;
+
 // Loaders
 const dracoLoader = new DRACOLoader();
 dracoLoader.setDecoderPath("./static/draco/");
@@ -256,7 +258,7 @@ const updateAudioToggleButton = () => {
   if (!audioToggleButton || !audioToggleIcon) {
     return;
   }
-  audioToggleIcon.textContent = isAudioEnabled ? "music_note" : "music_off";
+  audioToggleIcon.textContent = isAudioEnabled ? "volume_up" : "volume_off";
   audioToggleButton.setAttribute("aria-pressed", String(isAudioEnabled));
   audioToggleButton.setAttribute(
     "aria-label",
@@ -1606,6 +1608,7 @@ const startTimelineProgressAnimation = ({ loop = false, onLoop } = {}) => {
 };
 
 timelinePlayButton.addEventListener("click", () => {
+  if (isRandomFireworkOnLaunch) isRandomFireworkOnLaunch = false;
   if (isTimelineProgressPlaying) {
     fireworkManager.pauseAnimation();
     stopTimelineProgressAnimation();
@@ -1889,11 +1892,13 @@ setInitialFireworksView();
 
 function animate() {
   fireworkManager.animate(fireworks, undefined, handleFireworkAudio);
-  fireworkManager.animate(
-    timelineSelectedFireworks,
-    undefined,
-    handleFireworkAudio
-  );
+  // fireworkManager.animate(
+  //   timelineSelectedFireworks,
+  //   undefined,
+  //   handleFireworkAudio
+  // );
 }
 
-animate();
+if (isRandomFireworkOnLaunch) {
+  animate();
+}
