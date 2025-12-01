@@ -246,7 +246,7 @@ export default class FireworkManager {
     }
   }
 
-  animate(fireworkArray, timestamp) {
+  animate(fireworkArray, timestamp, onUpdate) {
     const nowMs =
       typeof timestamp === "number"
         ? timestamp
@@ -289,7 +289,36 @@ export default class FireworkManager {
       uniforms.u_launchProgress = launchProgress;
       const explosionTime = Math.max(elapsedSeconds - launchDuration, 0.0);
       uniforms.u_time = explosionTime;
+
+      if (typeof onUpdate === "function") {
+        const bloomDuration = Math.max(
+          uniforms.u_bloomDuration || this.params.bloomDuration,
+          1e-6
+        );
+        const hasStarted =
+          nowMs - firework.startTime - accumulatedPauseForFirework >=
+          startDelayMs;
+        const stage = !hasStarted
+          ? "pending"
+          : launchProgress < 1.0
+          ? "launch"
+          : explosionTime <= bloomDuration
+          ? "bloom"
+          : "cooldown";
+        onUpdate({
+          firework,
+          nowMs,
+          stage,
+          hasStarted,
+          launchProgress,
+          explosionTime,
+          launchDuration,
+          bloomDuration,
+          startDelayMs,
+          elapsedMs,
+        });
+      }
     });
-    requestAnimationFrame((ts) => this.animate(fireworkArray, ts));
+    requestAnimationFrame((ts) => this.animate(fireworkArray, ts, onUpdate));
   }
 }
