@@ -13,6 +13,21 @@ const cameraDirectionScratch = new Cesium.Cartesian3();
 const surfaceNormalScratch = new Cesium.Cartesian3();
 const cameraRightScratch = new Cesium.Cartesian3();
 const cameraUpScratch = new Cesium.Cartesian3();
+const lookTargetScratch = new Cesium.Cartesian3();
+
+// カメラが建物内部に入らないようにするための安全オフセット
+const MIN_ROOF_CLEARANCE_METERS = 15.0;
+// 花火を視界に入れつつ建物近辺を俯瞰するオフセット
+const BUILDING_VIEW_DISTANCE = 150.0;
+const BUILDING_VIEW_HEIGHT = 60.0;
+
+const buildingHeightCandidates = [
+  "measuredHeight",
+  "height",
+  "roofHeight",
+  "ROOF_HEIGHT",
+  "建物高さ",
+];
 
 // 初期ビュー設定
 const initialViewHeading = Cesium.Math.toRadians(200);
@@ -152,6 +167,25 @@ export class CameraController {
       return;
     }
 
+    const pickedFeature = scene.pick(screenPosition);
+
+    const getFeatureHeight = (feature) => {
+      if (!feature || !(feature instanceof Cesium.Cesium3DTileFeature)) {
+        return 0;
+      }
+      for (const key of buildingHeightCandidates) {
+        if (typeof feature.hasProperty === "function" && feature.hasProperty(key)) {
+          const val = feature.getProperty(key);
+          if (typeof val === "number" && Number.isFinite(val)) {
+            return val;
+          }
+        }
+      }
+      return 0;
+    };
+
+    const featureHeight = getFeatureHeight(pickedFeature);
+
     // 屋上位置を計算
     Cesium.Cartographic.fromCartesian(
       pickedPosition,
@@ -159,6 +193,10 @@ export class CameraController {
       roofCartographicScratch
     );
     roofCartographicScratch.height += roofViewOffsetMeters;
+    // 最低限のクリアランスを確保してカメラが埋まるのを防ぐ
+    if (roofCartographicScratch.height < MIN_ROOF_CLEARANCE_METERS) {
+      roofCartographicScratch.height = MIN_ROOF_CLEARANCE_METERS;
+    }
     Cesium.Cartesian3.fromRadians(
       roofCartographicScratch.longitude,
       roofCartographicScratch.latitude,
@@ -167,62 +205,76 @@ export class CameraController {
       roofPositionScratch
     );
 
-    // カメラの向きを計算
+    // 花火方向を維持しつつ、建物のやや外側・上から俯瞰するビューを構築
     Cesium.Cartesian3.subtract(
       fireworksFocus,
       roofPositionScratch,
       cameraDirectionScratch
     );
-    Cesium.Cartesian3.normalize(cameraDirectionScratch, cameraDirectionScratch);
+    const distanceToFireworks = Cesium.Cartesian3.magnitude(
+      cameraDirectionScratch
+    );
+    if (distanceToFireworks > 0) {
+      Cesium.Cartesian3.divideByScalar(
+        cameraDirectionScratch,
+        distanceToFireworks,
+        cameraDirectionScratch
+      );
+    }
 
     Cesium.Ellipsoid.WGS84.geodeticSurfaceNormal(
       roofPositionScratch,
       surfaceNormalScratch
     );
-    Cesium.Cartesian3.cross(
+
+    // 建物の手前側に少し引き、上にも持ち上げる
+    const pullBack = Cesium.Cartesian3.multiplyByScalar(
       cameraDirectionScratch,
+      -BUILDING_VIEW_DISTANCE,
+      new Cesium.Cartesian3()
+    );
+    const liftUp = Cesium.Cartesian3.multiplyByScalar(
+      surfaceNormalScratch,
+      Math.max(
+        BUILDING_VIEW_HEIGHT,
+        featureHeight * 0.3 + MIN_ROOF_CLEARANCE_METERS
+      ),
+      new Cesium.Cartesian3()
+    );
+
+    const destination = Cesium.Cartesian3.add(
+      roofPositionScratch,
+      pullBack,
+      new Cesium.Cartesian3()
+    );
+    Cesium.Cartesian3.add(destination, liftUp, destination);
+
+    // 視線は花火中心へ
+    Cesium.Cartesian3.clone(fireworksFocus, lookTargetScratch);
+    const direction = Cesium.Cartesian3.normalize(
+      Cesium.Cartesian3.subtract(
+        lookTargetScratch,
+        destination,
+        new Cesium.Cartesian3()
+      ),
+      new Cesium.Cartesian3()
+    );
+
+    // アップベクトルは地表法線に近付けて安定
+    const right = Cesium.Cartesian3.cross(
+      direction,
       surfaceNormalScratch,
       cameraRightScratch
     );
-
-    if (Cesium.Cartesian3.magnitudeSquared(cameraRightScratch) === 0.0) {
-      Cesium.Cartesian3.clone(scene.camera.right, cameraRightScratch);
-    } else {
-      Cesium.Cartesian3.normalize(cameraRightScratch, cameraRightScratch);
-    }
-
-    Cesium.Cartesian3.cross(
-      cameraRightScratch,
-      cameraDirectionScratch,
-      cameraUpScratch
-    );
-    Cesium.Cartesian3.normalize(cameraUpScratch, cameraUpScratch);
-
-    const destination = Cesium.Cartesian3.clone(
-      roofPositionScratch,
-      new Cesium.Cartesian3()
-    );
-    const direction = Cesium.Cartesian3.clone(
-      cameraDirectionScratch,
-      new Cesium.Cartesian3()
-    );
-    const up = Cesium.Cartesian3.clone(
-      cameraUpScratch,
-      new Cesium.Cartesian3()
-    );
-    const fireworksOffset = Cesium.Matrix4.multiplyByPoint(
-      fireworksEnuInverse,
-      destination,
-      new Cesium.Cartesian3()
-    );
+    Cesium.Cartesian3.normalize(right, right);
+    const up = Cesium.Cartesian3.cross(right, direction, cameraUpScratch);
+    Cesium.Cartesian3.normalize(up, up);
 
     this.viewer.camera.flyTo({
       destination,
       orientation: { direction, up },
       duration: 2.0,
       complete: () => {
-        this.viewer.camera.lookAt(fireworksFocus, fireworksOffset);
-        this.viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
         this.setResetButtonVisible(true);
         if (onComplete) {
           onComplete();
