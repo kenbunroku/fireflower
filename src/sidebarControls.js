@@ -11,6 +11,8 @@ import {
   params,
 } from "./constant.js";
 
+const randomColorKey = "random";
+
 /**
  * 花火の色を解決
  */
@@ -94,6 +96,8 @@ export class SidebarController {
     this.heightValue = null;
     this.sidebar = null;
     this.controlPanelContainer = null;
+    this.randomColorButton = null;
+    this.activeRandomResolvedKey = null;
   }
 
   /**
@@ -115,6 +119,9 @@ export class SidebarController {
     this.fireworkColorButtons = Array.from(
       document.querySelectorAll(".firework-color-swatch")
     );
+    this.randomColorButton = document.querySelector(
+      '.firework-color-swatch[data-firework-color="random"]'
+    );
 
     this.fireworkColorButtons.forEach((button) => {
       button.addEventListener("click", () => {
@@ -127,6 +134,7 @@ export class SidebarController {
     });
 
     this._updateColorButtons();
+    this._updateRandomColorOption();
   }
 
   /**
@@ -243,6 +251,17 @@ export class SidebarController {
    * 花火の色を設定
    */
   setFireworkColor(colorKeyOrHex) {
+    if (colorKeyOrHex === randomColorKey) {
+      this.activeFireworkColorKey = randomColorKey;
+      this.activeRandomResolvedKey = this._getRandomPresetKey();
+      const randomHex = resolveFireworkHex(this.activeRandomResolvedKey);
+      this._updateColorButtons();
+      if (this.onColorChange && randomHex) {
+        this.onColorChange(randomHex, randomColorKey);
+      }
+      return;
+    }
+
     const colorHex = resolveFireworkHex(colorKeyOrHex);
     if (!colorHex) {
       console.warn(`Firework color "${colorKeyOrHex}" is not defined.`);
@@ -299,6 +318,7 @@ export class SidebarController {
     });
 
     this._updateBurstTypeAvailability();
+    this._updateRandomColorOption();
 
     if (this.onModeChange) {
       this.onModeChange(mode);
@@ -342,11 +362,11 @@ export class SidebarController {
    * 現在の選択を作成
    */
   createSelection() {
+    const { colorKeyForSelection, randomColorKeys } =
+      this._resolveColorKeyForSelection();
     const fireworkColorHex =
-      resolveFireworkHex(this.activeFireworkColorKey) ?? params.fireworkColor;
-    const secondaryColorHex = resolveSecondaryPresetKey(
-      this.activeFireworkColorKey
-    );
+      resolveFireworkHex(colorKeyForSelection) ?? params.fireworkColor;
+    const secondaryColorHex = resolveSecondaryPresetKey(colorKeyForSelection);
     const launchHeight = Number(this.heightSlider?.value);
 
     return {
@@ -357,7 +377,8 @@ export class SidebarController {
       bloomDuration: category[this.activeFireworkCategoryKey].bloomDuration,
       fireworkType: this.activeFireworkCategoryKey,
       fireworkColor: fireworkColorHex,
-      fireworkColorKey: this.activeFireworkColorKey,
+      fireworkColorKey: randomColorKeys ? randomColorKey : colorKeyForSelection,
+      randomColorKeys,
       secondary:
         this.activeFireworkCategoryKey === "botan" ||
         this.activeFireworkCategoryKey === "meshibe"
@@ -426,6 +447,17 @@ export class SidebarController {
     }
   }
 
+  _updateRandomColorOption() {
+    const enabled = this._isBurstTypeEnabled();
+    if (this.randomColorButton) {
+      this.randomColorButton.style.display = enabled ? "" : "none";
+      this.randomColorButton.setAttribute("aria-hidden", String(!enabled));
+    }
+    if (!enabled && this.activeFireworkColorKey === randomColorKey) {
+      this.setFireworkColor(defaultFireworkColorKey);
+    }
+  }
+
   _syncHeightValue(value) {
     const numericValue = Number(value);
     if (!Number.isFinite(numericValue)) {
@@ -473,5 +505,33 @@ export class SidebarController {
 
   getLaunchHeight() {
     return Number(this.heightSlider?.value) || params.height;
+  }
+
+  _getRandomPresetKey() {
+    const presetKeys = Object.keys(fireworkColorPresets);
+    const index = Math.floor(Math.random() * presetKeys.length);
+    return presetKeys[index] ?? defaultFireworkColorKey;
+  }
+
+  _resolveColorKeyForSelection() {
+    if (
+      this._isBurstTypeEnabled() &&
+      this.activeFireworkColorKey === randomColorKey
+    ) {
+      const randomColorKeys = this._getUniqueRandomPresetKeys(5);
+      const chosen = randomColorKeys[0];
+      this.activeRandomResolvedKey = chosen;
+      return { colorKeyForSelection: chosen, randomColorKeys };
+    }
+    return {
+      colorKeyForSelection: this.activeFireworkColorKey,
+      randomColorKeys: undefined,
+    };
+  }
+
+  _getUniqueRandomPresetKeys(count) {
+    const presetKeys = Object.keys(fireworkColorPresets);
+    const shuffled = [...presetKeys].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, count);
   }
 }
