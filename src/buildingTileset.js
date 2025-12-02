@@ -8,6 +8,9 @@ import * as Cesium from "cesium";
 let buildingTilesets = [];
 let buildingSilhouetteStage = null;
 
+// スタイリッシュなネオンマゼンタ
+const HOVER_COLOR = Cesium.Color.fromCssColorString("#ff1f82").withAlpha(0.95);
+
 // パフォーマンス設定
 const tilesetPerformanceOptions = {
   maximumScreenSpaceError: 32,
@@ -42,20 +45,28 @@ const applyTilesetPerformanceTuning = (tileset) => {
  * 建物スタイルを適用
  */
 const applyBuildingStyle = (tileset, buildingColor, buildingOpacity) => {
+  const clampedOpacity = Math.min(Math.max(buildingOpacity ?? 1, 0), 1);
+  const cssColor = Cesium.Color.fromCssColorString(
+    buildingColor || "#000000",
+    new Cesium.Color()
+  );
+  cssColor.alpha = clampedOpacity;
+
   tileset.style = new Cesium.Cesium3DTileStyle({
-    color: `vec4(
-      mix(color('${buildingColor}').r, color().r, ${buildingOpacity}),
-      mix(color('${buildingColor}').g, color().g, ${buildingOpacity}),
-      mix(color('${buildingColor}').b, color().b, ${buildingOpacity}),
-      ${buildingOpacity}
-    )`,
+    // 事前にCSSカラー文字列へ変換しておくことで undefined を避ける
+    color: `color('${cssColor.toCssColorString()}')`,
   });
 };
 
 /**
  * シルエットエフェクト用に建物を登録
  */
-const registerBuildingForSilhouette = (tileset, scene, silhouetteColor) => {
+const registerBuildingForSilhouette = (
+  tileset,
+  scene,
+  silhouetteColor,
+  silhouetteWidth = 0.002
+) => {
   buildingTilesets.push(tileset);
 
   if (!buildingSilhouetteStage) {
@@ -68,7 +79,7 @@ const registerBuildingForSilhouette = (tileset, scene, silhouetteColor) => {
     );
     color.alpha = 1.0;
     buildingSilhouetteStage.uniforms.color = color;
-    buildingSilhouetteStage.uniforms.length = 0.002;
+    buildingSilhouetteStage.uniforms.length = silhouetteWidth;
     scene.postProcessStages.add(buildingSilhouetteStage);
   }
 
@@ -79,7 +90,12 @@ const registerBuildingForSilhouette = (tileset, scene, silhouetteColor) => {
  * 建物タイルセットを読み込む
  */
 export const loadBuildingTilesets = async (scene, params, onFirstVisible) => {
-  const { buildingColor, buildingOpacity } = params;
+  const {
+    buildingColor,
+    buildingOpacity,
+    buildingOutlineColor,
+    buildingOutlineWidth,
+  } = params;
 
   const tilesetUrls = [
     // 台東区 LOD2
@@ -96,7 +112,12 @@ export const loadBuildingTilesets = async (scene, params, onFirstVisible) => {
 
       applyTilesetPerformanceTuning(tileset);
       applyBuildingStyle(tileset, buildingColor, buildingOpacity);
-      registerBuildingForSilhouette(tileset, scene, buildingColor);
+      registerBuildingForSilhouette(
+        tileset,
+        scene,
+        buildingOutlineColor || buildingColor,
+        buildingOutlineWidth
+      );
 
       // 最初の表示時にコールバックを実行
       if (onFirstVisible) {
@@ -118,16 +139,37 @@ export const loadBuildingTilesets = async (scene, params, onFirstVisible) => {
 };
 
 /**
+ * 既に読み込んだ建物タイルセットへスタイルを再適用
+ * デバッグUIからの色・透明度変更に利用
+ */
+export const updateBuildingAppearance = ({
+  buildingColor,
+  buildingOpacity,
+}) => {
+  buildingTilesets.forEach((tileset) => {
+    applyBuildingStyle(tileset, buildingColor, buildingOpacity);
+  });
+};
+
+/**
  * 建物ハイライト管理
  */
 export class BuildingHighlighter {
-  constructor(scene, highlightColorHex = "#f5e642") {
+  constructor(scene, hoverColorHex = "#ff1fa6") {
     this.scene = scene;
-    this.highlightColor = Cesium.Color.fromCssColorString(highlightColorHex);
+    this.hoverColor = Cesium.Color.fromCssColorString(
+      hoverColorHex || "#ff1fa6"
+    );
     this.highlightState = {
       feature: undefined,
       originalColor: new Cesium.Color(),
     };
+  }
+
+  setHoverColor(hoverColorHex) {
+    this.hoverColor = Cesium.Color.fromCssColorString(
+      hoverColorHex || "#ff1fa6"
+    );
   }
 
   highlight(pickedFeature) {
@@ -148,7 +190,10 @@ export class BuildingHighlighter {
     // 新しいハイライトを設定
     this.highlightState.feature = pickedFeature;
     Cesium.Color.clone(pickedFeature.color, this.highlightState.originalColor);
-    pickedFeature.color = this.highlightColor;
+    pickedFeature.color = Cesium.Color.clone(
+      this.hoverColor,
+      new Cesium.Color()
+    );
   }
 
   clear() {
