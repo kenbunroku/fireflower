@@ -2,7 +2,10 @@ import * as Cesium from "cesium";
 import vs from "./shader/vertex.glsl";
 import fs from "./shader/fragment.glsl";
 
-import { randomPointOnSphere } from "./util.js";
+import {
+  randomPointOnSphere,
+  rotatePositionsAroundZ,
+} from "./util.js";
 
 export default class FireworkManager {
   constructor({
@@ -84,9 +87,19 @@ export default class FireworkManager {
       delayStep = this.params.delay,
       gravityStrentgh = this.params.gravityStrength,
       matrix = this.modelMatrix,
-      modelPositions = options.modelPositions,
+      modelPositions: incomingModelPositions = options.modelPositions,
+      randomizeModelRotation = false,
       group = "random", // デフォルトは"random"グループ
     } = options;
+
+    let modelPositions = incomingModelPositions;
+    if (incomingModelPositions && randomizeModelRotation) {
+      const randomAngle = Math.random() * Math.PI * 2;
+      modelPositions = rotatePositionsAroundZ(
+        incomingModelPositions,
+        randomAngle
+      );
+    }
 
     const positions = new Float32Array(numberOfParticles * 3 * times);
     const delays = new Float32Array(numberOfParticles * times);
