@@ -102,8 +102,11 @@ button {
 }
 
 .intro-overlay__start-button {
+  font-family: "fot-tsukumin-pr6n", sans-serif;
   pointer-events: auto;
+  max-width: 394px;
   letter-spacing: 0.08em;
+  font-size: 1rem;
   text-transform: uppercase;
   width: 100%;
 }
