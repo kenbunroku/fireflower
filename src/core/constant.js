@@ -21,7 +21,7 @@ export const params = {
   fireworkDuration: 2.0,
   times: 20,
   gravityStrength: 1,
-  buildingColor: "#38a4cfff",
+  buildingColor: "#798083ff",
   buildingOpacity: 1,
   buildingHoverColor: "#ffffff",
   launchOffsetRangeMeters: 100.0,
