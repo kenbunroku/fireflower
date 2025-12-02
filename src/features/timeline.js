@@ -283,7 +283,7 @@ export class TimelineManager {
         const innerFirework = this.fireworkManager.createFirework({
           ...selection,
           radius: innerRadius,
-          fireworkColor: primaryHex,
+          fireworkColor: secondaryHex,
           matrix,
           group: "timeline",
         });
@@ -297,7 +297,7 @@ export class TimelineManager {
         const outerFirework = this.fireworkManager.createFirework({
           ...selection,
           radius: outerRadius,
-          fireworkColor: secondaryHex,
+          fireworkColor: primaryHex,
           matrix,
           group: "timeline",
         });

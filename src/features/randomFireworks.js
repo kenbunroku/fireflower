@@ -82,7 +82,7 @@ export class RandomFireworksManager {
       const innerFirework = this.fireworkManager.createFirework({
         ...baseCategory,
         radius: innerRadius,
-        fireworkColor: primaryHex,
+        fireworkColor: secondaryHex,
         modelPositions,
         matrix,
         startDelayMs,
@@ -94,7 +94,7 @@ export class RandomFireworksManager {
       const outerFirework = this.fireworkManager.createFirework({
         ...baseCategory,
         radius: outerRadius,
-        fireworkColor: secondaryHex,
+        fireworkColor: primaryHex,
         modelPositions,
         matrix,
         startDelayMs,

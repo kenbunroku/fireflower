@@ -351,11 +351,10 @@ const initializeApp = async () => {
   sidebarController = new SidebarController({
     fireworks: randomFireworksManager.getFireworks(),
     onHeightChange: (height) => {
-      randomFireworksManager.getFireworks().forEach((firework) => {
-        if (firework.appearance?.uniforms) {
-          firework.appearance.uniforms.u_launchHeight = height;
-        }
-      });
+      // 高さ変更は今後生成される花火にのみ反映する
+      if (fireworkManager?.params) {
+        fireworkManager.params.height = height;
+      }
     },
   });
   sidebarController.initialize();
