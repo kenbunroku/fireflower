@@ -9,7 +9,7 @@ let buildingTilesets = [];
 let buildingSilhouetteStage = null;
 
 // スタイリッシュなネオンマゼンタ
-const HOVER_COLOR = Cesium.Color.fromCssColorString("#ff1f82").withAlpha(0.95);
+const HOVER_COLOR = Cesium.Color.fromCssColorString("#ffffff").withAlpha(0.95);
 
 // パフォーマンス設定
 const tilesetPerformanceOptions = {
@@ -155,10 +155,10 @@ export const updateBuildingAppearance = ({
  * 建物ハイライト管理
  */
 export class BuildingHighlighter {
-  constructor(scene, hoverColorHex = "#ff1fa6") {
+  constructor(scene, hoverColorHex = "#ffffff") {
     this.scene = scene;
     this.hoverColor = Cesium.Color.fromCssColorString(
-      hoverColorHex || "#ff1fa6"
+      hoverColorHex || "#ffffff"
     );
     this.highlightState = {
       feature: undefined,
@@ -168,7 +168,7 @@ export class BuildingHighlighter {
 
   setHoverColor(hoverColorHex) {
     this.hoverColor = Cesium.Color.fromCssColorString(
-      hoverColorHex || "#ff1fa6"
+      hoverColorHex || "#ffffff"
     );
   }
 
