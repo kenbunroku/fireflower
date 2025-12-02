@@ -23,6 +23,22 @@ export default class FireworkManager {
     this.launchSequences = new Set();
     this.launchOffsetScratch = new Cesium.Cartesian3();
     this.launchTranslationScratch = new Cesium.Matrix4();
+
+    // グループ別のpause状態を管理
+    this.groupPauseState = {
+      random: {
+        isAnimationPaused: false,
+        pauseStartedMs: 0,
+        accumulatedPauseMs: 0,
+      },
+      timeline: {
+        isAnimationPaused: false,
+        pauseStartedMs: 0,
+        accumulatedPauseMs: 0,
+      },
+    };
+
+    // 後方互換性のためのグローバル状態（非推奨）
     this.isAnimationPaused = false;
     this.pauseStartedMs = 0;
     this.accumulatedPauseMs = 0;
@@ -69,6 +85,7 @@ export default class FireworkManager {
       gravityStrentgh = this.params.gravityStrength,
       matrix = this.modelMatrix,
       modelPositions = options.modelPositions,
+      group = "random", // デフォルトは"random"グループ
     } = options;
 
     const positions = new Float32Array(numberOfParticles * 3 * times);
@@ -148,7 +165,7 @@ export default class FireworkManager {
       ),
       u_pointSize: pointSize,
       u_time: 0.0,
-      u_radius: radius, // ★ ここは「最大拡大係数」として使う
+      u_radius: radius,
       u_duration: launchDuration,
       u_launchHeight: launchHeight,
       u_bloomDuration: bloomDuration,
@@ -170,8 +187,8 @@ export default class FireworkManager {
       primitive,
       appearance,
       startTime: undefined,
+      group, // グループを保存
     };
-    // this.fireworks.push(firework);
     return firework;
   }
 
@@ -215,6 +232,45 @@ export default class FireworkManager {
     });
   }
 
+  // グループ指定でpause
+  pauseAnimationForGroup(groupName) {
+    const state = this.groupPauseState[groupName];
+    if (!state || state.isAnimationPaused) {
+      return;
+    }
+    state.isAnimationPaused = true;
+    const now =
+      typeof performance !== "undefined" ? performance.now() : Date.now();
+    state.pauseStartedMs = now;
+  }
+
+  // グループ指定でresume
+  resumeAnimationForGroup(groupName) {
+    const state = this.groupPauseState[groupName];
+    if (!state || !state.isAnimationPaused) {
+      return;
+    }
+    const now =
+      typeof performance !== "undefined" ? performance.now() : Date.now();
+    if (state.pauseStartedMs) {
+      state.accumulatedPauseMs += now - state.pauseStartedMs;
+    }
+    state.pauseStartedMs = 0;
+    state.isAnimationPaused = false;
+  }
+
+  // グループのpause状態をリセット
+  resetPauseStateForGroup(groupName) {
+    const state = this.groupPauseState[groupName];
+    if (!state) {
+      return;
+    }
+    state.isAnimationPaused = false;
+    state.pauseStartedMs = 0;
+    state.accumulatedPauseMs = 0;
+  }
+
+  // 後方互換性: グローバルpause（全グループに影響）
   pauseAnimation() {
     if (this.isAnimationPaused) {
       return;
@@ -223,8 +279,14 @@ export default class FireworkManager {
     const now =
       typeof performance !== "undefined" ? performance.now() : Date.now();
     this.pauseStartedMs = now;
+
+    // 全グループをpause
+    Object.keys(this.groupPauseState).forEach((groupName) => {
+      this.pauseAnimationForGroup(groupName);
+    });
   }
 
+  // 後方互換性: グローバルresume（全グループに影響）
   resumeAnimation() {
     if (!this.isAnimationPaused) {
       return;
@@ -236,6 +298,11 @@ export default class FireworkManager {
     }
     this.pauseStartedMs = 0;
     this.isAnimationPaused = false;
+
+    // 全グループをresume
+    Object.keys(this.groupPauseState).forEach((groupName) => {
+      this.resumeAnimationForGroup(groupName);
+    });
   }
 
   toggleAnimationPause() {
@@ -246,6 +313,26 @@ export default class FireworkManager {
     }
   }
 
+  // グループ別のpausedOffsetMsを取得
+  _getPausedOffsetForGroup(groupName, nowMs) {
+    const state = this.groupPauseState[groupName];
+    if (!state) {
+      // グループが存在しない場合はグローバル状態を使用
+      return (
+        this.accumulatedPauseMs +
+        (this.isAnimationPaused && this.pauseStartedMs
+          ? Math.max(nowMs - this.pauseStartedMs, 0)
+          : 0)
+      );
+    }
+    return (
+      state.accumulatedPauseMs +
+      (state.isAnimationPaused && state.pauseStartedMs
+        ? Math.max(nowMs - state.pauseStartedMs, 0)
+        : 0)
+    );
+  }
+
   animate(fireworkArray, timestamp, onUpdate) {
     const nowMs =
       typeof timestamp === "number"
@@ -253,16 +340,16 @@ export default class FireworkManager {
         : typeof performance !== "undefined"
         ? performance.now()
         : Date.now();
-    const pausedOffsetMs =
-      this.accumulatedPauseMs +
-      (this.isAnimationPaused && this.pauseStartedMs
-        ? Math.max(nowMs - this.pauseStartedMs, 0)
-        : 0);
 
     fireworkArray.forEach((firework) => {
       if (firework?.primitive && firework.primitive.show === false) {
         return;
       }
+
+      // 花火のグループを取得（デフォルトは"random"）
+      const groupName = firework.group || "random";
+      const pausedOffsetMs = this._getPausedOffsetForGroup(groupName, nowMs);
+
       if (!firework.startTime) {
         firework.startTime = nowMs;
         firework.pauseOffsetAtStart = pausedOffsetMs;

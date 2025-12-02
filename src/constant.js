@@ -1,4 +1,4 @@
-export const isDebugMode = true;
+export const isDebugMode = false;
 
 export const fireWorkCategory = {
   kiku: "菊",
