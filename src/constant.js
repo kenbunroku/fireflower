@@ -1,4 +1,4 @@
-export const isDebugMode = true;
+export const isDebugMode = false;
 
 export const fireWorkCategory = {
   kiku: "菊",
@@ -64,10 +64,10 @@ export const category = {
     gravityStrength: 1,
   },
   poka: {
-    numberOfParticles: 200,
+    numberOfParticles: 150,
     pointSize: 4.0,
     radius: 200,
-    bloomDuration: 3,
+    bloomDuration: 4, // ポカ物は開きが遅いので長めにする
     times: 80,
     gravityStrength: 4,
   },
