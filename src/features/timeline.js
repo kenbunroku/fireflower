@@ -230,12 +230,6 @@ export class TimelineManager {
     const elapsedMs = this.pausedProgressRatio * durationMs;
     const now = performance.now();
 
-    // playbackStartTimeを更新（現在時刻から経過分を引く＝開始時刻の再定義）
-    this.playbackStartTime = now - elapsedMs;
-
-    // ★重要: 既に発射済みの花火のstartTimeを再計算
-    this._recalculateLaunchedFireworkStartTimes(now, elapsedMs);
-
     // プログレスアニメーションを再開（ポーリングも再開）
     this._resumeProgressAnimation(elapsedMs, now);
 
@@ -243,54 +237,6 @@ export class TimelineManager {
     this.isTimelinePaused = false;
     this._setPlayButtonState(true);
     this._setInteractionEnabled(false);
-  }
-
-  /**
-   * 既に発射済みの花火のstartTimeを再計算する
-   * 花火追加によりdelayMsが変わった場合でも、アニメーションの進行状態を維持する
-   */
-  _recalculateLaunchedFireworkStartTimes(now, currentElapsedMs) {
-    const durationMs = this._getTimelineDurationMs();
-    const delayMs =
-      durationMs / Math.max(this.timelineSelections.length, 1);
-
-    this.timelineSelections.forEach((selection, selectionIndex) => {
-      const fireworks = this.timelineFireworks[selectionIndex];
-      if (!fireworks) return;
-
-      const isSokuhatsu = selection.burstType === "sokuhatsu";
-      const sokuhatsuDelayMs = 200;
-      const baseDelayMs = selectionIndex * delayMs;
-
-      let burstIndex = 0;
-
-      fireworks.forEach((firework) => {
-        // ペアのOuterはInnerと一緒に処理されるのでスキップ
-        if (firework.isPaired && !firework.isInner) {
-          return;
-        }
-
-        const burstDelay = isSokuhatsu ? burstIndex * sokuhatsuDelayMs : 0;
-        const scheduledTimeMs = baseDelayMs + burstDelay;
-
-        if (firework.hasLaunched) {
-          // 既に発射済みの花火のstartTimeを再計算
-          // 新しいplaybackStartTime + 本来のスケジュール時間
-          const newStartTime = this.playbackStartTime + scheduledTimeMs;
-          firework.startTime = newStartTime;
-
-          // ペアの花火も同様に更新
-          if (firework.isPaired && firework.pairedWith) {
-            firework.pairedWith.startTime = newStartTime;
-          }
-        }
-
-        // インデックスを進める（Innerまたは単独の時のみ）
-        if (!firework.isPaired || firework.isInner) {
-          burstIndex++;
-        }
-      });
-    });
   }
 
   /**
@@ -684,8 +630,9 @@ export class TimelineManager {
   /**
    * 経過時間に基づいて花火の発射をチェック・実行する
    * @param {number} elapsedMs - 再生開始からの経過時間
+   * @param {number} [nowMs] - 現在時刻（省略時はperformance.now）
    */
-  _checkAndLaunchFireworks(elapsedMs) {
+  _checkAndLaunchFireworks(elapsedMs, nowMs = performance.now()) {
     const durationMs = this._getTimelineDurationMs();
     const delayMs =
       durationMs / Math.max(this.timelineSelections.length, 1);
@@ -724,7 +671,7 @@ export class TimelineManager {
         // 時間が経過しているかチェック
         if (scheduledTimeMs <= elapsedMs) {
           // 発射実行
-          const preciseLaunchTime = this.playbackStartTime + scheduledTimeMs;
+          const preciseLaunchTime = nowMs - elapsedMs + scheduledTimeMs;
 
           if (firework.isPaired && firework.isInner && firework.pairedWith) {
             // ペア同時発射
@@ -1202,7 +1149,7 @@ export class TimelineManager {
       this._updateCardProgress(ratio);
 
       // ★ポーリング実行：このフレームで発射すべき花火を確認
-      this._checkAndLaunchFireworks(elapsed);
+      this._checkAndLaunchFireworks(elapsed, now);
 
       if (ratio < 1) {
         this.timelineProgressAnimationId = requestAnimationFrame(animate);
@@ -1243,7 +1190,7 @@ export class TimelineManager {
       this._updateCardProgress(ratio);
 
       // ★ポーリング実行
-      this._checkAndLaunchFireworks(elapsed);
+      this._checkAndLaunchFireworks(elapsed, now);
 
       if (ratio < 1) {
         this.timelineProgressAnimationId = requestAnimationFrame(animate);

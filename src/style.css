@@ -115,6 +115,56 @@ button {
   display: none !important;
 }
 
+.post-intro-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.post-intro-loading.is-visible {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.post-intro-loading__card {
+  min-width: 240px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  text-align: center;
+  pointer-events: auto;
+}
+
+.post-intro-loading__label {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.post-intro-loading__progress {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.post-intro-loading__progress-bar {
+  position: absolute;
+  inset: 0;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6cc0ff, #9a7bff, #ffc1e3);
+  transition: width 0.1s linear;
+}
+
 .tooltip-container {
   position: relative;
   display: inline-block;
@@ -207,6 +257,7 @@ button {
   z-index: 6;
   justify-content: flex-end;
   transition: right 0.3s ease;
+  opacity: 0;
 }
 
 .control-panel-container.is-open .control-panel__buttons {
@@ -757,6 +808,7 @@ button {
   --timeline-card-gap: 12px;
   --timeline-max-visible-cards: 9;
   position: relative;
+  opacity: 0;
 }
 
 .timeline-panel__header {
@@ -971,6 +1023,7 @@ button {
   pointer-events: auto;
   align-items: center;
   gap: 8px;
+  opacity: 0;
 }
 
 #resetCameraButton:hover {

@@ -129,7 +129,8 @@ export class CameraController {
   /**
    * デフォルトの花火ビューにフライ
    */
-  flyToDefaultView(duration = 2.0) {
+  flyToDefaultView(options = {}) {
+    const { duration = 2.0, onComplete } = options;
     this.viewer.camera.flyToBoundingSphere(
       new Cesium.BoundingSphere(fireworksFocus, 1.0),
       {
@@ -138,6 +139,9 @@ export class CameraController {
         complete: () => {
           this.viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
           this.setResetButtonVisible(false);
+          if (typeof onComplete === "function") {
+            onComplete();
+          }
         },
       }
     );

@@ -51,6 +51,7 @@ let sidebarController;
 let randomFireworksManager;
 let fireworksInitialized = false;
 let fireworksFallbackTimeoutId;
+let initialFireworksStartTimeoutId;
 let fireworkActionContainer;
 let addFireworkButtonEl;
 let deleteFireworkButtonEl;
@@ -58,6 +59,10 @@ let cancelFireworkButtonEl;
 let introOverlayEl;
 let startExperienceButtonEl;
 let hasStartedExperience = false;
+let hasCameraIntroCompleted = false;
+let postIntroLoadingEl;
+let postIntroLoadingBarEl;
+let postIntroLoadingAnimationId;
 let preStartHideElements = [];
 
 const updateAddFireworkButtonState = () => {
@@ -105,6 +110,84 @@ const showPreStartUi = () => {
   );
 };
 
+const restoreUiOpacity = () => {
+  [
+    document.querySelector(".control-panel__buttons"),
+    document.querySelector(".timeline-panel"),
+    document.getElementById("resetCameraButton"),
+  ]
+    .filter(Boolean)
+    .forEach((el) => {
+      el.style.opacity = "1";
+    });
+};
+
+const initPostIntroLoading = () => {
+  postIntroLoadingEl = document.getElementById("postIntroLoading");
+  postIntroLoadingBarEl = document.getElementById("postIntroLoadingBar");
+
+  if (postIntroLoadingBarEl) {
+    postIntroLoadingBarEl.style.width = "0%";
+  }
+};
+
+const hidePostIntroLoading = () => {
+  if (postIntroLoadingAnimationId) {
+    cancelAnimationFrame(postIntroLoadingAnimationId);
+    postIntroLoadingAnimationId = undefined;
+  }
+
+  if (postIntroLoadingBarEl) {
+    postIntroLoadingBarEl.style.width = "100%";
+  }
+
+  if (postIntroLoadingEl) {
+    postIntroLoadingEl.classList.remove("is-visible");
+  }
+};
+
+const showPostIntroLoading = () => {
+  if (!postIntroLoadingEl || !postIntroLoadingBarEl) {
+    return;
+  }
+
+  postIntroLoadingEl.classList.add("is-visible");
+  postIntroLoadingBarEl.style.width = "0%";
+
+  const durationMs = 5000;
+  const start = performance.now();
+
+  const tick = (now) => {
+    const progress = Math.min((now - start) / durationMs, 1);
+    postIntroLoadingBarEl.style.width = `${Math.round(progress * 100)}%`;
+    if (progress < 1) {
+      postIntroLoadingAnimationId = requestAnimationFrame(tick);
+    }
+  };
+
+  postIntroLoadingAnimationId = requestAnimationFrame(tick);
+};
+
+const scheduleInitialFireworksAfterIntro = () => {
+  if (initialFireworksStartTimeoutId) {
+    window.clearTimeout(initialFireworksStartTimeoutId);
+  }
+  initialFireworksStartTimeoutId = window.setTimeout(() => {
+    initialFireworksStartTimeoutId = undefined;
+    startInitialFireworks();
+  }, 5000);
+};
+
+const markCameraIntroComplete = () => {
+  if (hasCameraIntroCompleted) {
+    return;
+  }
+  hasCameraIntroCompleted = true;
+  restoreUiOpacity();
+  showPostIntroLoading();
+  scheduleInitialFireworksAfterIntro();
+};
+
 const setupIntroOverlay = () => {
   introOverlayEl = document.getElementById("introOverlay");
   startExperienceButtonEl = document.getElementById("startExperienceButton");
@@ -115,10 +198,14 @@ const setupIntroOverlay = () => {
 
   startExperienceButtonEl.addEventListener("click", () => {
     hasStartedExperience = true;
+    hasCameraIntroCompleted = false;
     hideIntroOverlay();
-    cameraController?.flyToDefaultView();
     showPreStartUi();
-    startInitialFireworks();
+    if (cameraController) {
+      cameraController.flyToDefaultView({ onComplete: markCameraIntroComplete });
+    } else {
+      markCameraIntroComplete();
+    }
   });
 };
 
@@ -200,6 +287,7 @@ const initializeApp = async () => {
   cameraController.setResetCameraButton(resetCameraButton);
   setupIntroOverlay();
   hidePreStartUi();
+  initPostIntroLoading();
 
   // デバッグモードでなければ日本全体ビューから開始する
   if (!isDebugMode) {
@@ -279,7 +367,7 @@ const initializeApp = async () => {
   setupMouseEvents(scene);
 
   // 建物タイルセットの読み込み
-  loadBuildingTilesets(scene, params, startInitialFireworks);
+  loadBuildingTilesets(scene, params);
 
   // フォールバックタイマー
   fireworksFallbackTimeoutId = window.setTimeout(startInitialFireworks, 8000);
@@ -367,6 +455,10 @@ const startInitialFireworks = () => {
     return;
   }
 
+  if (!hasCameraIntroCompleted) {
+    return;
+  }
+
   if (fireworksInitialized) {
     return;
   }
@@ -376,6 +468,12 @@ const startInitialFireworks = () => {
     fireworksFallbackTimeoutId = undefined;
   }
 
+  if (initialFireworksStartTimeoutId) {
+    window.clearTimeout(initialFireworksStartTimeoutId);
+    initialFireworksStartTimeoutId = undefined;
+  }
+
+  hidePostIntroLoading();
   randomFireworksManager.startInitialFireworks();
   fireworksInitialized = true;
 };
