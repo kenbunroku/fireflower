@@ -60,6 +60,10 @@ const updateAddFireworkButtonState = () => {
   if (!addFireworkButtonEl || !timelineManager) {
     return;
   }
+  if (timelineManager.isLocked?.()) {
+    addFireworkButtonEl.disabled = true;
+    return;
+  }
   const activeIndex = timelineManager.getActiveSelectionIndex();
   const atMaxWithoutEdit =
     activeIndex === undefined && timelineManager.isAtMaxSelections();
@@ -80,6 +84,10 @@ const updateDeleteButtonVisibility = () => {
   if (!deleteFireworkButtonEl || !timelineManager) {
     return;
   }
+  if (timelineManager.isLocked?.()) {
+    deleteFireworkButtonEl.style.display = "none";
+    return;
+  }
   const activeIndex = timelineManager.getActiveSelectionIndex();
   deleteFireworkButtonEl.style.display = Number.isFinite(activeIndex)
     ? ""
@@ -88,6 +96,10 @@ const updateDeleteButtonVisibility = () => {
 
 const updateCancelButtonVisibility = () => {
   if (!cancelFireworkButtonEl || !timelineManager) {
+    return;
+  }
+  if (timelineManager.isLocked?.()) {
+    cancelFireworkButtonEl.style.display = "none";
     return;
   }
   const activeIndex = timelineManager.getActiveSelectionIndex();
@@ -194,6 +206,13 @@ const initializeApp = async () => {
     timelinePlayButton: document.querySelector(".timeline-play"),
     addFireworkButton: document.getElementById("addFireworkButton"),
   });
+
+  const timelinePanel = document.querySelector(".timeline-panel");
+  if (timelinePanel) {
+    timelinePanel.addEventListener("timeline:interaction-toggle", () => {
+      updateActionButtons();
+    });
+  }
 
   // サイドバーコントローラーの初期化
   sidebarController = new SidebarController({
