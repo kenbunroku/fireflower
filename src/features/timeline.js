@@ -10,7 +10,7 @@ import {
   maxTimelineSelections,
   timelineModeIcons,
   timelineModeLabels,
-  timelinePlaybackDurationMs,
+  getTimelineDurationMs,
 } from "../core/constant.js";
 
 /**
@@ -57,6 +57,9 @@ export class TimelineManager {
     this.deleteFireworkButton = null;
     this.addFireworkButton = null;
     this.isInteractionLocked = false;
+
+    // 現在のタイムライン再生時間（選択数で動的に決まる）
+    this.timelineDurationMs = getTimelineDurationMs(0);
   }
 
   /**
@@ -88,6 +91,7 @@ export class TimelineManager {
     this._updatePanelVisibility();
     this._setInteractionEnabled(true);
     this._updatePlayButtonInteractivity();
+    this._refreshTimelineDuration();
   }
 
   /**
@@ -156,6 +160,7 @@ export class TimelineManager {
     this.isTimelinePaused = false;
     this.pausedProgressRatio = 0;
 
+    this._refreshTimelineDuration();
     this._stopPlayback();
     this._startPlayback();
 
@@ -197,11 +202,9 @@ export class TimelineManager {
 
     // 進捗率を保存
     const now = performance.now();
+    const durationMs = this._getTimelineDurationMs();
     const elapsed = now - this.progressAnimationStart;
-    this.pausedProgressRatio = Math.min(
-      elapsed / timelinePlaybackDurationMs,
-      1
-    );
+    this.pausedProgressRatio = Math.min(elapsed / durationMs, 1);
 
     // プログレスアニメーションを停止
     if (this.timelineProgressAnimationId) {
@@ -223,7 +226,8 @@ export class TimelineManager {
     this.fireworkManager.resumeAnimationForGroup("timeline");
 
     // 進捗率から経過時間を計算
-    const elapsedMs = this.pausedProgressRatio * timelinePlaybackDurationMs;
+    const durationMs = this._getTimelineDurationMs();
+    const elapsedMs = this.pausedProgressRatio * durationMs;
     const now = performance.now();
 
     // playbackStartTimeを更新（現在時刻から経過分を引く＝開始時刻の再定義）
@@ -246,8 +250,9 @@ export class TimelineManager {
    * 花火追加によりdelayMsが変わった場合でも、アニメーションの進行状態を維持する
    */
   _recalculateLaunchedFireworkStartTimes(now, currentElapsedMs) {
+    const durationMs = this._getTimelineDurationMs();
     const delayMs =
-      timelinePlaybackDurationMs / Math.max(this.timelineSelections.length, 1);
+      durationMs / Math.max(this.timelineSelections.length, 1);
 
     this.timelineSelections.forEach((selection, selectionIndex) => {
       const fireworks = this.timelineFireworks[selectionIndex];
@@ -434,6 +439,7 @@ export class TimelineManager {
       selectionIndex,
     });
     this._updatePanelVisibility();
+    this._refreshTimelineDuration();
 
     // 一時停止中だった場合、新しい花火の発射状態を調整
     if (wasPaused) {
@@ -453,7 +459,8 @@ export class TimelineManager {
    */
   _adjustNewFireworksForPausedState(selectionIndex) {
     // 現在の停止位置（経過時間）を取得
-    const elapsedMs = this.pausedProgressRatio * timelinePlaybackDurationMs;
+    const durationMs = this._getTimelineDurationMs();
+    const elapsedMs = this.pausedProgressRatio * durationMs;
 
     // _checkAndLaunchFireworksを利用して、この経過時間までに発射されているべき花火を処理
     this._checkAndLaunchFireworks(elapsedMs);
@@ -485,6 +492,7 @@ export class TimelineManager {
       (card) => Number(card.dataset.selectionIndex) === index
     );
     this._updateTimelineCard(targetCard, selection, index);
+    this._refreshTimelineDuration();
 
     // 再生中だった場合のみ、最初から再生し直す
     if (wasPlaying) {
@@ -544,6 +552,7 @@ export class TimelineManager {
     this.activeTimelineSelectionIndex = undefined;
     this._updatePanelVisibility();
     this._updatePlayButtonInteractivity();
+    this._refreshTimelineDuration();
 
     // 再生中だった場合のみ、最初から再生し直す
     // ただし、全て削除された場合は再生しない
@@ -594,6 +603,7 @@ export class TimelineManager {
     this.activeTimelineSelectionIndex = undefined;
     this._updatePanelVisibility();
     this._updatePlayButtonInteractivity();
+    this._refreshTimelineDuration();
 
     this.fireworkManager.resetPauseStateForGroup("timeline");
 
@@ -639,6 +649,26 @@ export class TimelineManager {
     return this.timelineSelections.length >= maxTimelineSelections;
   }
 
+  /**
+   * 選択数に応じた再生時間を再計算
+   */
+  _refreshTimelineDuration() {
+    this.timelineDurationMs = getTimelineDurationMs(
+      this.timelineSelections.length
+    );
+    return this.timelineDurationMs;
+  }
+
+  /**
+   * 現在の再生時間を取得（未設定の場合は再計算）
+   */
+  _getTimelineDurationMs() {
+    if (!this.timelineDurationMs) {
+      return this._refreshTimelineDuration();
+    }
+    return this.timelineDurationMs;
+  }
+
   // === 再生制御 ===
 
   /**
@@ -656,8 +686,9 @@ export class TimelineManager {
    * @param {number} elapsedMs - 再生開始からの経過時間
    */
   _checkAndLaunchFireworks(elapsedMs) {
+    const durationMs = this._getTimelineDurationMs();
     const delayMs =
-      timelinePlaybackDurationMs / Math.max(this.timelineSelections.length, 1);
+      durationMs / Math.max(this.timelineSelections.length, 1);
 
     this.timelineSelections.forEach((selection, selectionIndex) => {
       const fireworks = this.timelineFireworks[selectionIndex];
@@ -1163,9 +1194,11 @@ export class TimelineManager {
     this._setPlayButtonState(true);
     this._setInteractionEnabled(false);
 
+    const durationMs = this._getTimelineDurationMs();
+
     const animate = (now) => {
       const elapsed = now - this.progressAnimationStart;
-      const ratio = Math.min(elapsed / timelinePlaybackDurationMs, 1);
+      const ratio = Math.min(elapsed / durationMs, 1);
       this._updateCardProgress(ratio);
 
       // ★ポーリング実行：このフレームで発射すべき花火を確認
@@ -1202,9 +1235,11 @@ export class TimelineManager {
     // 経過時間を考慮して開始時刻を調整
     this.progressAnimationStart = now - elapsedMs;
 
+    const durationMs = this._getTimelineDurationMs();
+
     const animate = (now) => {
       const elapsed = now - this.progressAnimationStart;
-      const ratio = Math.min(elapsed / timelinePlaybackDurationMs, 1);
+      const ratio = Math.min(elapsed / durationMs, 1);
       this._updateCardProgress(ratio);
 
       // ★ポーリング実行

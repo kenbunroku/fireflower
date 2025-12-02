@@ -121,6 +121,22 @@ export const timelineModeLabels = {
   burst: "連発",
 };
 
-export const timelinePlaybackDurationMs = 10000;
+// タイムライン再生時間の計算パラメータ
+export const timelineBaseDurationPerSelectionMs = 7500; // 1選択あたりの基準時間
+export const timelineMinDurationMs = 5000; // 最低再生時間
+export const timelineMaxDurationMs = 20000; // 最高再生時間
+
+/**
+ * タイムライン全体の再生時間を選択数に応じて計算
+ * 最低/最高値でクランプする
+ */
+export const getTimelineDurationMs = (selectionCount = 0) => {
+  const count = Math.max(Math.floor(selectionCount), 1);
+  const total = timelineBaseDurationPerSelectionMs * count;
+  return Math.max(
+    timelineMinDurationMs,
+    Math.min(total, timelineMaxDurationMs)
+  );
+};
 
 export const roofViewOffsetMeters = 20.0;
