@@ -168,6 +168,10 @@ button {
   right: calc(var(--sidebar-width) + 24px);
 }
 
+.control-panel-container.is-open .open__button {
+  display: none;
+}
+
 .control-panel__buttons .cesium-viewer-fullscreenContainer {
   position: static;
   inset: auto;
@@ -545,6 +549,12 @@ button {
   border-radius: 8px;
   border: 2px solid transparent;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .firework-color-swatch:hover {
@@ -586,6 +596,11 @@ button {
 }
 .firework-color-swatch[data-firework-color="yellow"] {
   background: #fdc322;
+}
+.firework-color-swatch[data-firework-color="random"] {
+  background: linear-gradient(135deg, #ff8c4e, #8775ff, #4effc1);
+  color: #0c0c12;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
 }
 
 .panel-slider {
@@ -680,6 +695,7 @@ button {
 }
 
 .timeline-panel {
+  display: none;
   margin-top: auto;
   width: fit-content;
   max-width: calc(100% - 350px);
@@ -721,8 +737,15 @@ button {
     border-color 0.2s ease;
 }
 
-.timeline-play:hover,
-.timeline-play:focus-visible {
+.timeline-play:disabled,
+.timeline-play.is-locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: grayscale(0.2);
+}
+
+.timeline-play:not(:disabled):not(.is-locked):hover,
+.timeline-play:not(:disabled):not(.is-locked):focus-visible {
   background: #fff;
   background-blend-mode: multiply;
   box-shadow: 0 0 20px 0 rgba(0, 0, 0, 0.25);
@@ -772,6 +795,11 @@ button {
   font-size: 22px;
 }
 
+.timeline-clear-button.is-locked {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
 .timeline-carousel {
   display: grid;
   grid-auto-flow: column;
@@ -808,8 +836,8 @@ button {
 
 .timeline-card {
   border-radius: 20px;
-  width: 93%;
-  height: 93%;
+  width: 91%;
+  height: 91%;
   cursor: pointer;
   aspect-ratio: 1 / 1;
   transition: border 0.2s ease, transform 0.2s ease;
