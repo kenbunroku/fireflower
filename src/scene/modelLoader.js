@@ -5,7 +5,7 @@
 
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
-import { rotatePositionsAroundX } from "./util.js";
+import { rotatePositionsAroundX } from "../core/util.js";
 
 // Loaders
 const dracoLoader = new DRACOLoader();

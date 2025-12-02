@@ -4,7 +4,7 @@
  */
 
 import * as Cesium from "cesium";
-import { location, roofViewOffsetMeters } from "./constant.js";
+import { location, roofViewOffsetMeters } from "../core/constant.js";
 
 // スクラッチ変数（メモリ効率化）
 const roofCartographicScratch = new Cesium.Cartographic();

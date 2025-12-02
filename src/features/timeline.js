@@ -11,7 +11,7 @@ import {
   timelineModeIcons,
   timelineModeLabels,
   timelinePlaybackDurationMs,
-} from "./constant.js";
+} from "../core/constant.js";
 
 /**
  * タイムラインマネージャークラス

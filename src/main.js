@@ -6,17 +6,17 @@
 import * as Cesium from "cesium";
 
 // モジュールのインポート
-import FireworkManager from "./FireworkManager.js";
-import { category, isDebugMode, location, params } from "./constant.js";
+import FireworkManager from "./scene/FireworkManager.js";
+import { category, isDebugMode, location, params } from "./core/constant.js";
 
 import {
   primeAudioOnInteraction,
   createAudioToggleButton,
   handleFireworkAudio,
   resetFireworkAudioState,
-} from "./audio.js";
+} from "./features/audio.js";
 
-import { loadAllModels, modelPositionStore } from "./modelLoader.js";
+import { loadAllModels, modelPositionStore } from "./scene/modelLoader.js";
 
 import {
   initViewer,
@@ -24,21 +24,21 @@ import {
   moveFullscreenButton,
   getViewer,
   getScene,
-} from "./viewer.js";
+} from "./scene/viewer.js";
 
 import {
   loadBuildingTilesets,
   BuildingHighlighter,
   updateBuildingAppearance,
-} from "./buildingTileset.js";
+} from "./scene/buildingTileset.js";
 
-import { CameraController } from "./cameraController.js";
+import { CameraController } from "./scene/cameraController.js";
 
-import { TimelineManager } from "./timeline.js";
+import { TimelineManager } from "./features/timeline.js";
 
-import { SidebarController } from "./sidebarControls.js";
+import { SidebarController } from "./features/sidebarControls.js";
 
-import { RandomFireworksManager } from "./randomFireworks.js";
+import { RandomFireworksManager } from "./features/randomFireworks.js";
 
 const DIMMED_BUILDING_OPACITY = 0.25;
 

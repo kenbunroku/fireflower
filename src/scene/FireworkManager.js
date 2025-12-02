@@ -1,11 +1,11 @@
 import * as Cesium from "cesium";
-import vs from "./shader/vertex.glsl";
-import fs from "./shader/fragment.glsl";
+import vs from "../shader/vertex.glsl";
+import fs from "../shader/fragment.glsl";
 
 import {
   randomPointOnSphere,
   rotatePositionsAroundZ,
-} from "./util.js";
+} from "../core/util.js";
 
 export default class FireworkManager {
   constructor({

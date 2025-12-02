@@ -9,7 +9,7 @@ import {
   fireWorkCategory,
   fireworkColorPresets,
   params,
-} from "./constant.js";
+} from "../core/constant.js";
 
 const randomColorKey = "random";
 

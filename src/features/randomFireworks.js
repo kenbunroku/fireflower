@@ -8,7 +8,7 @@ import {
   defaultFireworkColorKey,
   fireworkColorPresets,
   params,
-} from "./constant.js";
+} from "../core/constant.js";
 
 /**
  * ランダムな色キーを選択
