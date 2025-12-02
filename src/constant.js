@@ -1,4 +1,4 @@
-export const isDebugMode = false;
+export const isDebugMode = true;
 
 export const fireWorkCategory = {
   kiku: "菊",
@@ -21,8 +21,9 @@ export const params = {
   fireworkDuration: 2.0,
   times: 20,
   gravityStrength: 1,
-  buildingColor: "#5fd4ff",
-  buildingOpacity: 0.7,
+  buildingColor: "#38a4cfff",
+  buildingOpacity: 0.95,
+  buildingHoverColor: "#ff1fa6",
   launchOffsetRangeMeters: 100.0,
   height: 200,
   delay: 0.005,
@@ -63,11 +64,11 @@ export const category = {
     gravityStrength: 1,
   },
   poka: {
-    numberOfParticles: 250,
+    numberOfParticles: 200,
     pointSize: 4.0,
     radius: 200,
     bloomDuration: 3,
-    times: 60,
+    times: 80,
     gravityStrength: 4,
   },
   heart: {
