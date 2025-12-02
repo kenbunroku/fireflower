@@ -51,6 +51,57 @@ let sidebarController;
 let randomFireworksManager;
 let fireworksInitialized = false;
 let fireworksFallbackTimeoutId;
+let fireworkActionContainer;
+let addFireworkButtonEl;
+let deleteFireworkButtonEl;
+let cancelFireworkButtonEl;
+
+const updateAddFireworkButtonState = () => {
+  if (!addFireworkButtonEl || !timelineManager) {
+    return;
+  }
+  const activeIndex = timelineManager.getActiveSelectionIndex();
+  const atMaxWithoutEdit =
+    activeIndex === undefined && timelineManager.isAtMaxSelections();
+  addFireworkButtonEl.disabled = atMaxWithoutEdit;
+};
+
+const updateAddFireworkButtonLabel = () => {
+  if (!addFireworkButtonEl || !timelineManager) {
+    return;
+  }
+  const activeIndex = timelineManager.getActiveSelectionIndex();
+  addFireworkButtonEl.textContent = Number.isFinite(activeIndex)
+    ? "この設定で花火を保存"
+    : "+ この設定で花火を追加";
+};
+
+const updateDeleteButtonVisibility = () => {
+  if (!deleteFireworkButtonEl || !timelineManager) {
+    return;
+  }
+  const activeIndex = timelineManager.getActiveSelectionIndex();
+  deleteFireworkButtonEl.style.display = Number.isFinite(activeIndex)
+    ? ""
+    : "none";
+};
+
+const updateCancelButtonVisibility = () => {
+  if (!cancelFireworkButtonEl || !timelineManager) {
+    return;
+  }
+  const activeIndex = timelineManager.getActiveSelectionIndex();
+  cancelFireworkButtonEl.style.display = Number.isFinite(activeIndex)
+    ? ""
+    : "none";
+};
+
+const updateActionButtons = () => {
+  updateAddFireworkButtonState();
+  updateAddFireworkButtonLabel();
+  updateDeleteButtonVisibility();
+  updateCancelButtonVisibility();
+};
 
 // === 初期化 ===
 
@@ -171,6 +222,7 @@ const initializeApp = async () => {
 
   // 花火追加ボタンのセットアップ
   setupAddFireworkButton();
+  setupCancelFireworkButton();
 
   // 削除ボタンのセットアップ
   setupDeleteFireworkButton();
@@ -267,16 +319,19 @@ const setupAddFireworkButton = () => {
     return;
   }
 
-  const updateButtonState = () => {
-    addFireworkButton.disabled = timelineManager.isAtMaxSelections();
-  };
+  addFireworkButtonEl = addFireworkButton;
 
-  const updateButtonLabel = () => {
-    const activeIndex = timelineManager.getActiveSelectionIndex();
-    addFireworkButton.textContent = Number.isFinite(activeIndex)
-      ? "この設定で保存"
-      : "+ この設定で花火を追加";
-  };
+  const parent = addFireworkButton.parentElement;
+  if (parent) {
+    fireworkActionContainer =
+      parent.querySelector(".firework-action-buttons") ||
+      document.createElement("div");
+    fireworkActionContainer.className = "firework-action-buttons";
+    if (!parent.querySelector(".firework-action-buttons")) {
+      parent.insertBefore(fireworkActionContainer, addFireworkButton);
+    }
+    fireworkActionContainer.appendChild(addFireworkButton);
+  }
 
   addFireworkButton.addEventListener("click", () => {
     const activeIndex = timelineManager.getActiveSelectionIndex();
@@ -288,17 +343,57 @@ const setupAddFireworkButton = () => {
     const selection = sidebarController.createSelection();
 
     if (Number.isFinite(activeIndex)) {
-      timelineManager.updateSelection(activeIndex, selection);
+      const updated = timelineManager.updateSelection(activeIndex, selection);
+      if (updated) {
+        timelineManager.clearActiveSelection();
+      }
     } else {
       timelineManager.addSelection(selection);
     }
 
-    updateButtonState();
-    updateButtonLabel();
+    updateActionButtons();
   });
 
-  updateButtonState();
-  updateButtonLabel();
+  const timelineCarousel = document.getElementById("timelineCarousel");
+  if (timelineCarousel) {
+    timelineCarousel.addEventListener("click", () => {
+      updateActionButtons();
+    });
+  }
+
+  updateActionButtons();
+};
+
+/**
+ * キャンセルボタンのセットアップ
+ */
+const setupCancelFireworkButton = () => {
+  const addFireworkButton = document.getElementById("addFireworkButton");
+  if (!addFireworkButton) {
+    return;
+  }
+
+  const cancelFireworkButton = document.createElement("button");
+  cancelFireworkButton.id = "cancelFireworkButton";
+  cancelFireworkButton.type = "button";
+  cancelFireworkButton.className = "panel-cta panel-cta--ghost";
+  cancelFireworkButton.textContent = "キャンセル";
+  cancelFireworkButton.style.display = "none";
+
+  cancelFireworkButtonEl = cancelFireworkButton;
+
+  if (fireworkActionContainer) {
+    fireworkActionContainer.appendChild(cancelFireworkButton);
+  } else {
+    addFireworkButton.insertAdjacentElement("afterend", cancelFireworkButton);
+  }
+
+  cancelFireworkButton.addEventListener("click", () => {
+    timelineManager.clearActiveSelection();
+    updateActionButtons();
+  });
+
+  updateActionButtons();
 };
 
 /**
@@ -318,14 +413,13 @@ const setupDeleteFireworkButton = () => {
     '<span class="material-icons-outlined" aria-hidden="true">delete</span><span>この設定を削除</span>';
   deleteFireworkButton.style.display = "none";
 
-  addFireworkButton.insertAdjacentElement("afterend", deleteFireworkButton);
+  deleteFireworkButtonEl = deleteFireworkButton;
 
-  const updateVisibility = () => {
-    const activeIndex = timelineManager.getActiveSelectionIndex();
-    deleteFireworkButton.style.display = Number.isFinite(activeIndex)
-      ? ""
-      : "none";
-  };
+  if (fireworkActionContainer) {
+    fireworkActionContainer.appendChild(deleteFireworkButton);
+  } else {
+    addFireworkButton.insertAdjacentElement("afterend", deleteFireworkButton);
+  }
 
   deleteFireworkButton.addEventListener("click", () => {
     const activeIndex = timelineManager.getActiveSelectionIndex();
@@ -334,10 +428,10 @@ const setupDeleteFireworkButton = () => {
     }
 
     timelineManager.deleteSelection(activeIndex);
-    updateVisibility();
+    updateActionButtons();
   });
 
-  updateVisibility();
+  updateActionButtons();
 };
 
 /**

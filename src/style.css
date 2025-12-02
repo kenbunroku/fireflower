@@ -651,11 +651,28 @@ button {
   box-shadow: 1px 1px 15px 0 rgba(255, 255, 255, 0.55) inset;
 }
 
+.panel-cta--ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: none;
+}
+
+.firework-action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 #deleteFireworkButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  width: 100%;
+}
+
+#cancelFireworkButton {
+  width: 100%;
 }
 
 #deleteFireworkButton .material-icons-outlined {
@@ -797,11 +814,15 @@ button {
   aspect-ratio: 1 / 1;
   transition: border 0.2s ease, transform 0.2s ease;
   background-size: cover;
+  background-origin: border-box;
   position: relative;
+  border: 2px solid transparent;
+  box-shadow: none;
 }
 
 .timeline-card.is-active {
-  border-color: rgba(255, 255, 255, 0.8);
+  border-color: #ff9800;
+  box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.6);
 }
 
 .material-icons-outlined.timeline-card__edit {

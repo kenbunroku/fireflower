@@ -570,6 +570,14 @@ export class TimelineManager {
   }
 
   /**
+   * 編集状態を解除（アクティブカードのハイライトを外す）
+   */
+  clearActiveSelection() {
+    this.activeTimelineSelectionIndex = undefined;
+    this.timelineCards.forEach((card) => card.classList.remove("is-active"));
+  }
+
+  /**
    * 選択数を取得
    */
   getSelectionCount() {
