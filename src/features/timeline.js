@@ -25,6 +25,7 @@ export class TimelineManager {
     this.onRandomFireworkStop = options.onRandomFireworkStop;
     this.resetFireworkAudioState = options.resetFireworkAudioState;
     this.handleFireworkAudio = options.handleFireworkAudio;
+    this.onSelectionEdit = options.onSelectionEdit;
 
     // 状態
     this.timelineSelections = [];
@@ -439,6 +440,9 @@ export class TimelineManager {
     );
     this._updateTimelineCard(targetCard, selection, index);
     this._refreshTimelineDuration();
+    if (this.activeTimelineSelectionIndex === index) {
+      this._notifySelectionEdit();
+    }
 
     // 再生中だった場合のみ、最初から再生し直す
     if (wasPlaying) {
@@ -499,6 +503,7 @@ export class TimelineManager {
     this._updatePanelVisibility();
     this._updatePlayButtonInteractivity();
     this._refreshTimelineDuration();
+    this._notifySelectionEdit();
 
     // 再生中だった場合のみ、最初から再生し直す
     // ただし、全て削除された場合は再生しない
@@ -550,6 +555,7 @@ export class TimelineManager {
     this._updatePanelVisibility();
     this._updatePlayButtonInteractivity();
     this._refreshTimelineDuration();
+    this._notifySelectionEdit();
 
     this.fireworkManager.resetPauseStateForGroup("timeline");
 
@@ -566,12 +572,28 @@ export class TimelineManager {
   }
 
   /**
+   * 指定インデックスのselectionを取得（コピーを返す）
+   */
+  getSelectionAt(index) {
+    const selection = this.timelineSelections?.[index];
+    if (!selection) {
+      return undefined;
+    }
+    const cloned = { ...selection };
+    if (Array.isArray(selection.randomColorKeys)) {
+      cloned.randomColorKeys = [...selection.randomColorKeys];
+    }
+    return cloned;
+  }
+
+  /**
    * 編集状態を解除（アクティブカードのハイライトを外す）
    */
   clearActiveSelection() {
     this.activeTimelineSelectionIndex = undefined;
     this.timelineCards.forEach((card) => card.classList.remove("is-active"));
     this._updatePlayButtonInteractivity();
+    this._notifySelectionEdit();
   }
 
   /**
@@ -888,6 +910,18 @@ export class TimelineManager {
     return editIcon;
   }
 
+  _notifySelectionEdit() {
+    if (!this.onSelectionEdit) {
+      return;
+    }
+    if (Number.isFinite(this.activeTimelineSelectionIndex)) {
+      const selection = this.getSelectionAt(this.activeTimelineSelectionIndex);
+      this.onSelectionEdit(selection, this.activeTimelineSelectionIndex);
+      return;
+    }
+    this.onSelectionEdit(undefined, undefined);
+  }
+
   _handleTimelineCardClick(card) {
     if (this.isInteractionLocked) {
       return;
@@ -908,6 +942,7 @@ export class TimelineManager {
       }
     }
     this._updatePlayButtonInteractivity();
+    this._notifySelectionEdit();
   }
 
   _removeTimelineCardElement(card) {

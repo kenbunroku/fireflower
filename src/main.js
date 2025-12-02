@@ -330,6 +330,11 @@ const initializeApp = async () => {
       randomFireworksManager.stopIdleLoop();
       randomFireworksManager.setVisibility(false);
     },
+    onSelectionEdit: (selection) => {
+      if (selection && sidebarController?.applySelection) {
+        sidebarController.applySelection(selection);
+      }
+    },
   });
 
   timelineManager.setElements({
