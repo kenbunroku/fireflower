@@ -35,6 +35,7 @@ export class TimelineManager {
     this.isTimelineLooping = false;
     this.isTimelinePaused = false; // 一時停止中かどうか
     this.activeTimelineProgressCardIndex = undefined;
+    this.isInteractionLocked = false;
 
     // タイマーID
     this.timelineProgressAnimationId = undefined;
@@ -55,6 +56,7 @@ export class TimelineManager {
     this.timelinePlayButton = null;
     this.deleteFireworkButton = null;
     this.addFireworkButton = null;
+    this.isInteractionLocked = false;
   }
 
   /**
@@ -84,6 +86,8 @@ export class TimelineManager {
     // イベントリスナーを設定
     this._setupEventListeners();
     this._updatePanelVisibility();
+    this._setInteractionEnabled(true);
+    this._updatePlayButtonInteractivity();
   }
 
   /**
@@ -91,7 +95,10 @@ export class TimelineManager {
    */
   _setupEventListeners() {
     if (this.timelineClearButton) {
-      this.timelineClearButton.addEventListener("click", () => this.clear());
+      this.timelineClearButton.addEventListener("click", () => {
+        if (this.isInteractionLocked) return;
+        this.clear();
+      });
     }
 
     if (this.timelinePlayButton) {
@@ -133,6 +140,9 @@ export class TimelineManager {
    * 新規再生を開始
    */
   _startNewPlayback() {
+    // 編集状態を解除して再生ボタンを有効化
+    this.clearActiveSelection();
+
     const restartSequence = () => {
       if (!this.isTimelineLooping) {
         return;
@@ -202,6 +212,7 @@ export class TimelineManager {
     this.isTimelineProgressPlaying = false;
     this.isTimelinePaused = true;
     this._setPlayButtonState(false);
+    this._setInteractionEnabled(true);
   }
 
   /**
@@ -227,6 +238,7 @@ export class TimelineManager {
     this.isTimelineProgressPlaying = true;
     this.isTimelinePaused = false;
     this._setPlayButtonState(true);
+    this._setInteractionEnabled(false);
   }
 
   /**
@@ -283,10 +295,31 @@ export class TimelineManager {
     const heartPositions = this.modelPositionStore?.getHeartPositions();
     const lovePositions = this.modelPositionStore?.getLovePositions();
     const count = selection.mode === "burst" ? 5 : 1;
+    const randomColorKeys = selection.randomColorKeys || [];
     const fireworks = [];
+
+    const getColorKeyForIndex = (index) => {
+      if (randomColorKeys.length > 0) {
+        return randomColorKeys[index % randomColorKeys.length];
+      }
+      return selection.fireworkColorKey;
+    };
+
+    const resolvePrimaryHex = (colorKey) =>
+      fireworkColorPresets[colorKey]?.hex ||
+      selection.fireworkColor ||
+      fireworkColorPresets[selection.fireworkColorKey]?.hex;
+
+    const resolveSecondaryHex = (colorKey) =>
+      fireworkColorPresets[colorKey]?.secondary ||
+      selection.secondary ||
+      resolvePrimaryHex(colorKey);
 
     for (let i = 0; i < count; i++) {
       const matrix = this.fireworkManager.createRandomizedLaunchMatrix();
+      const colorKey = getColorKeyForIndex(i);
+      const primaryHex = resolvePrimaryHex(colorKey);
+      const secondaryHex = resolveSecondaryHex(colorKey);
 
       if (
         selection.fireworkType === "botan" ||
@@ -299,7 +332,7 @@ export class TimelineManager {
         const innerFirework = this.fireworkManager.createFirework({
           ...selection,
           radius: innerRadius,
-          fireworkColor: selection.fireworkColor,
+          fireworkColor: primaryHex,
           matrix,
           group: "timeline",
         });
@@ -313,7 +346,7 @@ export class TimelineManager {
         const outerFirework = this.fireworkManager.createFirework({
           ...selection,
           radius: outerRadius,
-          fireworkColor: selection.secondary,
+          fireworkColor: secondaryHex,
           matrix,
           group: "timeline",
         });
@@ -357,6 +390,7 @@ export class TimelineManager {
       } else {
         const firework = this.fireworkManager.createFirework({
           ...selection,
+          fireworkColor: primaryHex,
           matrix,
           group: "timeline",
         });
@@ -509,6 +543,7 @@ export class TimelineManager {
     this._reindexTimelineCards();
     this.activeTimelineSelectionIndex = undefined;
     this._updatePanelVisibility();
+    this._updatePlayButtonInteractivity();
 
     // 再生中だった場合のみ、最初から再生し直す
     // ただし、全て削除された場合は再生しない
@@ -523,6 +558,10 @@ export class TimelineManager {
    * タイムラインをクリア
    */
   clear() {
+    if (this.isInteractionLocked) {
+      return;
+    }
+
     this._stopProgressAnimation({ reset: true });
     this._stopPlayback();
 
@@ -554,6 +593,7 @@ export class TimelineManager {
 
     this.activeTimelineSelectionIndex = undefined;
     this._updatePanelVisibility();
+    this._updatePlayButtonInteractivity();
 
     this.fireworkManager.resetPauseStateForGroup("timeline");
 
@@ -575,6 +615,7 @@ export class TimelineManager {
   clearActiveSelection() {
     this.activeTimelineSelectionIndex = undefined;
     this.timelineCards.forEach((card) => card.classList.remove("is-active"));
+    this._updatePlayButtonInteractivity();
   }
 
   /**
@@ -582,6 +623,13 @@ export class TimelineManager {
    */
   getSelectionCount() {
     return this.timelineSelections.length;
+  }
+
+  /**
+   * インタラクションがロックされているか
+   */
+  isLocked() {
+    return this.isInteractionLocked;
   }
 
   /**
@@ -863,6 +911,9 @@ export class TimelineManager {
   }
 
   _handleTimelineCardClick(card) {
+    if (this.isInteractionLocked) {
+      return;
+    }
     this._setActiveTimelineCard(card);
   }
 
@@ -878,6 +929,7 @@ export class TimelineManager {
         this.activeTimelineSelectionIndex = selectionIndex;
       }
     }
+    this._updatePlayButtonInteractivity();
   }
 
   _removeTimelineCardElement(card) {
@@ -900,6 +952,7 @@ export class TimelineManager {
     mode,
     burstType,
     selectionIndex,
+    randomColorKeys,
   }) {
     if (!this.timelineCarousel) {
       return;
@@ -925,14 +978,29 @@ export class TimelineManager {
     const meta = document.createElement("span");
     meta.className = "timeline-card__meta";
 
-    const colorLabel = fireworkColorPresets[fireworkColorKey]
-      ? fireworkColorKey
-      : fireworkColor?.toUpperCase() || "CUSTOM";
+    const displayColorKey =
+      fireworkColorKey === "random"
+        ? randomColorKeys?.[0] || fireworkColorKey
+        : fireworkColorKey;
+
+    const colorLabel =
+      fireworkColorKey === "random"
+        ? "RANDOM"
+        : fireworkColorPresets[fireworkColorKey]
+        ? fireworkColorKey
+        : fireworkColor?.toUpperCase() || "CUSTOM";
 
     const colorIndicator = document.createElement("span");
     colorIndicator.className = "timeline-card__color";
-    colorIndicator.style.backgroundColor =
-      fireworkColor || fireworkColorPresets[fireworkColorKey]?.hex || "#fff";
+    if (fireworkColorKey === "random") {
+      colorIndicator.style.background =
+        "linear-gradient(135deg, #ff8c4e, #8775ff, #4effc1)";
+    } else {
+      colorIndicator.style.backgroundColor =
+        fireworkColor ||
+        fireworkColorPresets[displayColorKey]?.hex ||
+        "#fff";
+    }
 
     const modeLabel =
       (mode && timelineModeLabels[mode]) || timelineModeLabels.solo;
@@ -977,17 +1045,30 @@ export class TimelineManager {
 
     const colorIndicator = card.querySelector(".timeline-card__color");
     if (colorIndicator) {
-      colorIndicator.style.backgroundColor =
-        selection.fireworkColor ||
-        fireworkColorPresets[selection.fireworkColorKey]?.hex ||
-        "#fff";
+      const displayColorKey =
+        selection.fireworkColorKey === "random"
+          ? selection.randomColorKeys?.[0] || selection.fireworkColorKey
+          : selection.fireworkColorKey;
+
+      if (selection.fireworkColorKey === "random") {
+        colorIndicator.style.background =
+          "linear-gradient(135deg, #ff8c4e, #8775ff, #4effc1)";
+      } else {
+        colorIndicator.style.backgroundColor =
+          selection.fireworkColor ||
+          fireworkColorPresets[displayColorKey]?.hex ||
+          "#fff";
+      }
 
       const modeLabel =
         (selection.mode && timelineModeLabels[selection.mode]) ||
         timelineModeLabels.solo;
-      const colorLabel = fireworkColorPresets[selection.fireworkColorKey]
-        ? selection.fireworkColorKey
-        : selection.fireworkColor?.toUpperCase() || "CUSTOM";
+      const colorLabel =
+        selection.fireworkColorKey === "random"
+          ? "RANDOM"
+          : fireworkColorPresets[selection.fireworkColorKey]
+          ? selection.fireworkColorKey
+          : selection.fireworkColor?.toUpperCase() || "CUSTOM";
 
       colorIndicator.title = modeLabel;
       colorIndicator.setAttribute("aria-label", `${modeLabel} / ${colorLabel}`);
@@ -1007,6 +1088,35 @@ export class TimelineManager {
     });
   }
 
+  _setInteractionEnabled(isEnabled) {
+    this.isInteractionLocked = !isEnabled;
+
+    if (this.timelineClearButton) {
+      this.timelineClearButton.disabled = !isEnabled;
+      this.timelineClearButton.classList.toggle("is-locked", !isEnabled);
+      this.timelineClearButton.setAttribute(
+        "aria-disabled",
+        (!isEnabled).toString()
+      );
+    }
+    if (this.addFireworkButton) {
+      this.addFireworkButton.disabled = !isEnabled;
+    }
+
+    this.timelineCards.forEach((card) => {
+      card.classList.toggle("is-locked", !isEnabled);
+    });
+
+    if (this.timelinePanel) {
+      const event = new CustomEvent("timeline:interaction-toggle", {
+        detail: { enabled: isEnabled },
+      });
+      this.timelinePanel.dispatchEvent(event);
+    }
+
+    this._updatePlayButtonInteractivity();
+  }
+
   _setPlayButtonState(isPlaying) {
     if (!this.timelinePlayButton) {
       return;
@@ -1018,6 +1128,24 @@ export class TimelineManager {
       isPlaying ? "停止" : "再生"
     );
     this.timelinePlayButton.classList.toggle("is-playing", isPlaying);
+  }
+
+  _updatePlayButtonInteractivity() {
+    if (!this.timelinePlayButton) {
+      return;
+    }
+    const lockedForOtherInteractions =
+      this.isInteractionLocked && !this.isTimelineProgressPlaying;
+    const isEditing = Number.isFinite(this.activeTimelineSelectionIndex);
+    const shouldDisable = lockedForOtherInteractions || isEditing;
+    const shouldLockClass = shouldDisable;
+
+    this.timelinePlayButton.disabled = shouldDisable;
+    this.timelinePlayButton.classList.toggle("is-locked", shouldLockClass);
+    this.timelinePlayButton.setAttribute(
+      "aria-disabled",
+      shouldDisable.toString()
+    );
   }
 
   _startProgressAnimation({ loop = false, onLoop } = {}) {
@@ -1033,6 +1161,7 @@ export class TimelineManager {
     this.progressOnLoop = onLoop;
     this.isTimelineProgressPlaying = true;
     this._setPlayButtonState(true);
+    this._setInteractionEnabled(false);
 
     const animate = (now) => {
       const elapsed = now - this.progressAnimationStart;
