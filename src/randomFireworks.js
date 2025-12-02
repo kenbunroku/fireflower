@@ -58,8 +58,10 @@ export class RandomFireworksManager {
       categoryKeys[Math.floor(Math.random() * categoryKeys.length)] || "kiku";
 
     const colorKey = pickRandomColorKey();
-    const fireworkColor =
+    const primaryHex =
       fireworkColorPresets[colorKey]?.hex ?? params.fireworkColor;
+    const secondaryHex =
+      fireworkColorPresets[colorKey]?.secondary ?? primaryHex;
 
     const modelPositions =
       categoryKey === "heart"
@@ -68,11 +70,63 @@ export class RandomFireworksManager {
         ? lovePositions
         : undefined;
 
+    const matrix = this.fireworkManager.createRandomizedLaunchMatrix();
+
+    if (categoryKey === "botan" || categoryKey === "meshibe") {
+      const baseCategory = category[categoryKey];
+      const innerRadius =
+        (baseCategory?.radius ?? params.radius) * 0.6;
+      const outerRadius =
+        (baseCategory?.radius ?? params.radius) * 1.2;
+
+      const innerFirework = this.fireworkManager.createFirework({
+        ...baseCategory,
+        radius: innerRadius,
+        fireworkColor: primaryHex,
+        modelPositions,
+        matrix,
+        startDelayMs,
+        group: "random",
+      });
+      innerFirework.isPaired = true;
+      innerFirework.isInner = true;
+
+      const outerFirework = this.fireworkManager.createFirework({
+        ...baseCategory,
+        radius: outerRadius,
+        fireworkColor: secondaryHex,
+        modelPositions,
+        matrix,
+        startDelayMs,
+        group: "random",
+      });
+      outerFirework.isPaired = true;
+      outerFirework.isInner = false;
+
+      innerFirework.pairedWith = outerFirework;
+      outerFirework.pairedWith = innerFirework;
+
+      if (this.resetFireworkAudioState) {
+        this.resetFireworkAudioState(innerFirework);
+        this.resetFireworkAudioState(outerFirework);
+      }
+
+      innerFirework.originalColorKey = colorKey;
+      innerFirework.keepOriginalColor = true;
+      outerFirework.originalColorKey = colorKey;
+      outerFirework.keepOriginalColor = true;
+
+      this.fireworks.push(innerFirework);
+      this.fireworks.push(outerFirework);
+
+      return outerFirework;
+    }
+
     const firework = this.fireworkManager.createFirework({
       ...category[categoryKey],
-      fireworkColor,
+      fireworkColor: primaryHex,
       modelPositions,
-      matrix: this.fireworkManager.createRandomizedLaunchMatrix(),
+      matrix,
       startDelayMs,
       group: "random",
     });
@@ -104,12 +158,34 @@ export class RandomFireworksManager {
    */
   scheduleFireworksSequentially() {
     const spacingMs = Math.max(params.interval * 1500, 0);
-    this.fireworks.forEach((firework, index) => {
-      firework.startDelayMs = index * spacingMs;
-      firework.startTime = undefined;
-      if (this.resetFireworkAudioState) {
-        this.resetFireworkAudioState(firework);
+    let launchIndex = 0;
+
+    this.fireworks.forEach((firework) => {
+      // 外側は内側の処理でまとめて設定する
+      if (firework.isPaired && !firework.isInner) {
+        return;
       }
+
+      const startDelayMs = launchIndex * spacingMs;
+
+      if (firework.isPaired && firework.isInner && firework.pairedWith) {
+        firework.startDelayMs = startDelayMs;
+        firework.startTime = undefined;
+        firework.pairedWith.startDelayMs = startDelayMs;
+        firework.pairedWith.startTime = undefined;
+        if (this.resetFireworkAudioState) {
+          this.resetFireworkAudioState(firework);
+          this.resetFireworkAudioState(firework.pairedWith);
+        }
+      } else {
+        firework.startDelayMs = startDelayMs;
+        firework.startTime = undefined;
+        if (this.resetFireworkAudioState) {
+          this.resetFireworkAudioState(firework);
+        }
+      }
+
+      launchIndex++;
     });
   }
 
