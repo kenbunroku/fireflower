@@ -227,29 +227,13 @@ export class CameraController {
       surfaceNormalScratch
     );
 
-    // 建物の手前側に少し引き、上にも持ち上げる
-    const pullBack = Cesium.Cartesian3.multiplyByScalar(
-      cameraDirectionScratch,
-      -BUILDING_VIEW_DISTANCE,
-      new Cesium.Cartesian3()
-    );
-    const liftUp = Cesium.Cartesian3.multiplyByScalar(
-      surfaceNormalScratch,
-      Math.max(
-        BUILDING_VIEW_HEIGHT,
-        featureHeight * 0.3 + MIN_ROOF_CLEARANCE_METERS
-      ),
-      new Cesium.Cartesian3()
-    );
-
-    const destination = Cesium.Cartesian3.add(
+    // 目的地は屋上中心（わずかにクリアランスを持たせた高さ）
+    const destination = Cesium.Cartesian3.clone(
       roofPositionScratch,
-      pullBack,
       new Cesium.Cartesian3()
     );
-    Cesium.Cartesian3.add(destination, liftUp, destination);
 
-    // 視線は花火中心へ
+    // 視線は花火中心へ（屋上から夜空を見るイメージ）
     Cesium.Cartesian3.clone(fireworksFocus, lookTargetScratch);
     const direction = Cesium.Cartesian3.normalize(
       Cesium.Cartesian3.subtract(
