@@ -1,3 +1,8 @@
+/**
+ * Main Entry Point
+ * 全モジュールの統合とアプリケーション初期化
+ */
+
 import * as Cesium from "cesium";
 
 // モジュールのインポート
@@ -24,6 +29,7 @@ import {
 import {
   loadBuildingTilesets,
   BuildingHighlighter,
+  updateBuildingAppearance,
 } from "./buildingTileset.js";
 
 import { CameraController } from "./cameraController.js";
@@ -33,6 +39,8 @@ import { TimelineManager } from "./timeline.js";
 import { SidebarController } from "./sidebarControls.js";
 
 import { RandomFireworksManager } from "./randomFireworks.js";
+
+const DIMMED_BUILDING_OPACITY = 0.25;
 
 // === アプリケーション状態 ===
 let fireworkManager;
@@ -86,15 +94,16 @@ const initializeApp = async () => {
   const resetCameraButton = document.getElementById("resetCameraButton");
   cameraController.setResetCameraButton(resetCameraButton);
 
-  // デバッグモードでなければ初期ビューを設定
+  // デバッグモードでなければ日本全体ビューを設定（元のコードと同じ）
   if (!isDebugMode) {
-    cameraController.setInitialView();
-  } else {
     cameraController.setJapanView();
   }
 
   // 建物ハイライターの初期化
-  buildingHighlighter = new BuildingHighlighter(scene);
+  buildingHighlighter = new BuildingHighlighter(
+    scene,
+    params.buildingHoverColor
+  );
 
   // タイムラインマネージャーの初期化
   timelineManager = new TimelineManager({
@@ -102,6 +111,19 @@ const initializeApp = async () => {
     fireworkManager,
     modelPositionStore,
     resetFireworkAudioState,
+    handleFireworkAudio,
+    onPlaybackStart: () => {
+      updateBuildingAppearance({
+        buildingColor: params.buildingColor,
+        buildingOpacity: DIMMED_BUILDING_OPACITY,
+      });
+    },
+    onPlaybackStop: () => {
+      updateBuildingAppearance({
+        buildingColor: params.buildingColor,
+        buildingOpacity: params.buildingOpacity,
+      });
+    },
     onRandomFireworkStart: () => {
       randomFireworksManager.setAnimationEnabled(true);
       randomFireworksManager.setVisibility(true);
@@ -152,6 +174,9 @@ const initializeApp = async () => {
 
   // 削除ボタンのセットアップ
   setupDeleteFireworkButton();
+
+  // 初期花火ビューを設定（元のコードのsetInitialFireworksViewと同じ）
+  cameraController.setInitialView();
 
   // アニメーションループ開始
   animate();
@@ -320,6 +345,8 @@ const setupDeleteFireworkButton = () => {
  */
 const animate = () => {
   randomFireworksManager.animate();
+  // timelineManagerのアニメーションはplayButton押下時に開始され、
+  // FireworkManager内部のrequestAnimationFrameで継続される
 };
 
 // アプリケーション起動
