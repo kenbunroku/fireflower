@@ -122,7 +122,7 @@ export const timelineModeLabels = {
 };
 
 // タイムライン再生時間の計算パラメータ
-export const timelineBaseDurationPerSelectionMs = 7500; // 1選択あたりの基準時間
+export const timelineBaseDurationPerSelectionMs = 5000; // 1選択あたりの基準時間
 export const timelineMinDurationMs = 5000; // 最低再生時間
 export const timelineMaxDurationMs = 20000; // 最高再生時間
 
