@@ -55,6 +55,10 @@ let fireworkActionContainer;
 let addFireworkButtonEl;
 let deleteFireworkButtonEl;
 let cancelFireworkButtonEl;
+let introOverlayEl;
+let startExperienceButtonEl;
+let hasStartedExperience = false;
+let preStartHideElements = [];
 
 const updateAddFireworkButtonState = () => {
   if (!addFireworkButtonEl || !timelineManager) {
@@ -78,6 +82,44 @@ const updateAddFireworkButtonLabel = () => {
   addFireworkButtonEl.textContent = Number.isFinite(activeIndex)
     ? "この設定で花火を保存"
     : "+ この設定で花火を追加";
+};
+
+const hideIntroOverlay = () => {
+  if (introOverlayEl) {
+    introOverlayEl.classList.add("is-hidden");
+  }
+};
+
+const hidePreStartUi = () => {
+  preStartHideElements = [
+    document.getElementById("resetCameraButton"),
+    document.querySelector(".control-panel__buttons"),
+  ].filter(Boolean);
+
+  preStartHideElements.forEach((el) => el.classList.add("is-hidden-before-start"));
+};
+
+const showPreStartUi = () => {
+  preStartHideElements.forEach((el) =>
+    el.classList.remove("is-hidden-before-start")
+  );
+};
+
+const setupIntroOverlay = () => {
+  introOverlayEl = document.getElementById("introOverlay");
+  startExperienceButtonEl = document.getElementById("startExperienceButton");
+
+  if (!startExperienceButtonEl) {
+    return;
+  }
+
+  startExperienceButtonEl.addEventListener("click", () => {
+    hasStartedExperience = true;
+    hideIntroOverlay();
+    cameraController?.flyToDefaultView();
+    showPreStartUi();
+    startInitialFireworks();
+  });
 };
 
 const updateDeleteButtonVisibility = () => {
@@ -156,10 +198,13 @@ const initializeApp = async () => {
   cameraController = new CameraController(viewer);
   const resetCameraButton = document.getElementById("resetCameraButton");
   cameraController.setResetCameraButton(resetCameraButton);
+  setupIntroOverlay();
+  hidePreStartUi();
 
-  // デバッグモードでなければ日本全体ビューを設定（元のコードと同じ）
+  // デバッグモードでなければ日本全体ビューから開始する
   if (!isDebugMode) {
     cameraController.setJapanView();
+    cameraController.setResetButtonVisible(true);
   }
 
   // 建物ハイライターの初期化
@@ -246,8 +291,10 @@ const initializeApp = async () => {
   // 削除ボタンのセットアップ
   setupDeleteFireworkButton();
 
-  // 初期花火ビューを設定（元のコードのsetInitialFireworksViewと同じ）
-  cameraController.setInitialView();
+  // 初期花火ビューを設定（デバッグ時のみ近景から開始）
+  if (isDebugMode) {
+    cameraController.setInitialView();
+  }
 
   // アニメーションループ開始
   animate();
@@ -316,6 +363,10 @@ const setupMouseEvents = (scene) => {
  * 初期花火を開始
  */
 const startInitialFireworks = () => {
+  if (!hasStartedExperience) {
+    return;
+  }
+
   if (fireworksInitialized) {
     return;
   }
