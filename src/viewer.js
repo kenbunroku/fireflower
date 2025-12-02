@@ -51,7 +51,7 @@ export const initViewer = async (containerId = "cesiumContainer") => {
 
   scene = viewer.scene;
   scene.globe.depthTestAgainstTerrain = true;
-  scene.debugShowFramesPerSecond = true;
+  scene.debugShowFramesPerSecond = false;
   scene.highDynamicRange = true;
   scene.globe.enableLighting = true;
 
