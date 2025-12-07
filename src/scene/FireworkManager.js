@@ -86,6 +86,7 @@ export default class FireworkManager {
       launchHeight = this.params.height,
       delayStep = this.params.delay,
       gravityStrentgh = this.params.gravityStrength,
+      useEaseInSine = false,
       matrix = this.modelMatrix,
       modelPositions: incomingModelPositions = options.modelPositions,
       randomizeModelRotation = false,
@@ -184,6 +185,7 @@ export default class FireworkManager {
       u_bloomDuration: bloomDuration,
       u_launchProgress: 0.0,
       u_gravityStrength: gravityStrentgh,
+      u_useEaseInSine: useEaseInSine ? 1.0 : 0.0,
     };
 
     const instance = new Cesium.GeometryInstance({ geometry });
