@@ -64,12 +64,13 @@ export const category = {
     gravityStrength: 1,
   },
   poka: {
-    numberOfParticles: 150,
+    numberOfParticles: 200,
     pointSize: 4.0,
     radius: 150,
-    bloomDuration: 4, // ポカ物は開きが遅いので長めにする
-    times: 80,
+    bloomDuration: 3,
+    times: 60,
     gravityStrength: 4,
+    useEaseInSine: true,
   },
   heart: {
     numberOfParticles: 0,
@@ -122,7 +123,8 @@ export const timelineModeLabels = {
 };
 
 // タイムライン再生時間の計算パラメータ
-export const timelineBaseDurationPerSelectionMs = 5000; // 1選択あたりの基準時間
+export const timelineBaseDurationPerSelectionMs = 4500; // 1選択あたりの基準時間
+export const timelineBaseDurationPerSokuhatsuSelectionMs = 6000; // 速発の場合の基準時間
 export const timelineMinDurationMs = 5000; // 最低再生時間
 export const timelineMaxDurationMs = 50000; // 最高再生時間（制限なし）
 
@@ -130,9 +132,15 @@ export const timelineMaxDurationMs = 50000; // 最高再生時間（制限なし
  * タイムライン全体の再生時間を選択数に応じて計算
  * 最低/最高値でクランプする
  */
-export const getTimelineDurationMs = (selectionCount = 0) => {
+export const getTimelineDurationMs = (
+  selectionCount = 0,
+  { hasSokuhatsu = false } = {}
+) => {
   const count = Math.max(Math.floor(selectionCount), 1);
-  const total = timelineBaseDurationPerSelectionMs * count;
+  const base = hasSokuhatsu
+    ? timelineBaseDurationPerSokuhatsuSelectionMs
+    : timelineBaseDurationPerSelectionMs;
+  const total = base * count;
   return Math.max(
     timelineMinDurationMs,
     Math.min(total, timelineMaxDurationMs)
