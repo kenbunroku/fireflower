@@ -48,7 +48,7 @@ export const category = {
     gravityStrength: 1,
   },
   meshibe: {
-    numberOfParticles: 250,
+    numberOfParticles: 225,
     pointSize: 4.0,
     radius: 800,
     bloomDuration: 3,
@@ -56,7 +56,7 @@ export const category = {
     gravityStrength: 1,
   },
   kanmukiku: {
-    numberOfParticles: 250,
+    numberOfParticles: 225,
     pointSize: 4.0,
     radius: 800,
     bloomDuration: 3,
@@ -66,7 +66,7 @@ export const category = {
   poka: {
     numberOfParticles: 150,
     pointSize: 4.0,
-    radius: 200,
+    radius: 150,
     bloomDuration: 4, // ポカ物は開きが遅いので長めにする
     times: 80,
     gravityStrength: 4,
@@ -124,7 +124,7 @@ export const timelineModeLabels = {
 // タイムライン再生時間の計算パラメータ
 export const timelineBaseDurationPerSelectionMs = 5000; // 1選択あたりの基準時間
 export const timelineMinDurationMs = 5000; // 最低再生時間
-export const timelineMaxDurationMs = 20000; // 最高再生時間
+export const timelineMaxDurationMs = 50000; // 最高再生時間（制限なし）
 
 /**
  * タイムライン全体の再生時間を選択数に応じて計算
