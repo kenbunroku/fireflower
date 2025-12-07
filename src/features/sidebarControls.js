@@ -467,7 +467,7 @@ export class SidebarController {
     params.height = numericValue;
 
     if (this.heightValue) {
-      this.heightValue.textContent = String(numericValue);
+      this.heightValue.textContent = `${numericValue}m`;
     }
 
     if (this.onHeightChange) {
