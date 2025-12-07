@@ -621,8 +621,12 @@ export class TimelineManager {
    * 選択数に応じた再生時間を再計算
    */
   _refreshTimelineDuration() {
+    const hasSokuhatsu = this.timelineSelections.some(
+      (selection) => selection?.burstType === "sokuhatsu"
+    );
     this.timelineDurationMs = getTimelineDurationMs(
-      this.timelineSelections.length
+      this.timelineSelections.length,
+      { hasSokuhatsu }
     );
     return this.timelineDurationMs;
   }
