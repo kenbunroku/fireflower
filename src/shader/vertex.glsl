@@ -12,9 +12,14 @@ uniform float u_launchHeight;
 uniform float u_launchProgress;
 uniform float u_bloomDuration;
 uniform float u_gravityStrength;
+uniform float u_useEaseInSine;
 
 float easingOutQuint(float t) {
   return 1.0 - pow(1.0 - t, 5.0);
+}
+
+float easingInSine(float t) {
+  return 1.0 - cos((t * 3.14159265) * 0.5);
 }
 
 void main() {
@@ -22,7 +27,8 @@ void main() {
   vec3 dir = normalize(unitDir);
 
   float t = max(u_time - delay, 0.0);
-  float d1 = easingOutQuint(t / u_bloomDuration);
+  float bloomT = t / u_bloomDuration;
+  float d1 = u_useEaseInSine > 0.5 ? easingInSine(bloomT) : easingOutQuint(bloomT);
 
   float scaleFactor = d1 * u_radius; // 時間経過で 0 -> u_radius まで増える
 
