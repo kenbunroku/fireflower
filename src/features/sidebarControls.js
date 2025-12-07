@@ -375,6 +375,8 @@ export class SidebarController {
       pointSize: category[this.activeFireworkCategoryKey].pointSize,
       radius: category[this.activeFireworkCategoryKey].radius,
       bloomDuration: category[this.activeFireworkCategoryKey].bloomDuration,
+      useEaseInSine:
+        category[this.activeFireworkCategoryKey].useEaseInSine ?? false,
       fireworkType: this.activeFireworkCategoryKey,
       fireworkColor: fireworkColorHex,
       fireworkColorKey: randomColorKeys ? randomColorKey : colorKeyForSelection,
